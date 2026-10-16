@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#f2f2f7">
+<meta name="apple-mobile-web-app-title" content="Mahfil Chat">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Mahfil Chat</title>
+<style>
+:root{--bg:#f2f2f7;--card:#fff;--ink:#000;--mute:#8e8e93;--line:#c6c6c8;--blue:#007aff;--in:#e9e9eb;--bar:rgba(249,249,249,.88)}
+@media(prefers-color-scheme:dark){:root{--bg:#000;--card:#1c1c1e;--ink:#fff;--line:#38383a;--blue:#0a84ff;--in:#26262a;--bar:rgba(22,22,24,.88)}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0;overflow:hidden}
+body{background:var(--bg);color:var(--ink);font:17px/1.35 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif}
+button,input{font:inherit;color:inherit}
+.screen{display:none;position:absolute;inset:0;flex-direction:column}
+.screen.on{display:flex}
+.glass{background:var(--bar);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
+.bar{padding:calc(env(safe-area-inset-top,0px) + 8px) 12px 8px;border-bottom:.5px solid var(--line);display:flex;align-items:center;gap:8px;min-height:52px}
+.bar h2{margin:0;font-size:17px;font-weight:600;text-align:center}
+.bar .mid{flex:1;text-align:center;line-height:1.15}
+.bar small{color:var(--mute);font-size:12px}
+.link{background:none;border:0;color:var(--blue);font-size:17px;padding:6px;cursor:pointer}
+.large{padding:calc(env(safe-area-inset-top,0px) + 12px) 20px 6px;display:flex;align-items:center}
+.large h1{margin:0;flex:1;font-size:34px;font-weight:700;letter-spacing:-.4px}
+.plus{width:34px;height:34px;border-radius:50%;border:0;background:var(--blue);color:#fff;font-size:24px;line-height:1;cursor:pointer}
+.scroll{flex:1;overflow-y:auto;padding:8px 16px}
+.group{background:var(--card);border-radius:12px;overflow:hidden}
+.row{display:flex;align-items:center;gap:12px;padding:10px 14px;cursor:pointer;width:100%;border:0;background:none;text-align:left;position:relative}
+.row+.row::before{content:"";position:absolute;top:0;left:68px;right:0;border-top:.5px solid var(--line)}
+.av{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:600;flex:none}
+.row b{display:block;font-weight:600}
+.row small{color:var(--mute);font-size:14px}
+.empty{text-align:center;color:var(--mute);padding:60px 30px}
+.tabs{display:flex;border-top:.5px solid var(--line);padding:6px 0 calc(6px + env(safe-area-inset-bottom,0px))}
+.tabs button{flex:1;background:none;border:0;color:var(--mute);font-size:11px;cursor:pointer}
+.tabs button span{display:block;font-size:24px}
+.tabs button.on{color:var(--blue)}
+.pane{display:none;flex:1;flex-direction:column;min-height:0}
+.pane.on{display:flex}
+/* auth */
+#auth{justify-content:center;padding:24px}
+.logo{width:76px;height:76px;border-radius:18px;background:linear-gradient(160deg,#34c3ff,#007aff);display:grid;place-items:center;font-size:38px;margin:0 auto 14px}
+#auth h1{text-align:center;margin:0 0 4px;font-size:30px}
+#auth p{text-align:center;color:var(--mute);margin:0 0 24px}
+.fields{background:var(--card);border-radius:12px;overflow:hidden;max-width:420px;width:100%;margin:0 auto}
+.fields input{display:block;width:100%;border:0;background:none;padding:14px 16px;outline:0}
+.fields input+input{border-top:.5px solid var(--line)}
+.main{display:block;max-width:420px;width:100%;margin:16px auto 0;padding:14px;border:0;border-radius:12px;background:var(--blue);color:#fff;font-weight:600;cursor:pointer}
+.main:disabled{opacity:.5}
+.msg{max-width:420px;margin:12px auto 0;text-align:center;font-size:14px;color:#ff3b30}
+/* settings */
+.codecard{background:var(--card);border-radius:16px;padding:26px 16px;text-align:center;margin-top:10px}
+.codecard small{color:var(--mute)}
+.bigcode{font-size:52px;font-weight:700;letter-spacing:10px;margin:8px 0 4px;color:var(--blue);padding-left:10px}
+.two{display:flex;gap:10px;max-width:420px;margin:14px auto 0}
+.two .main{margin:0;flex:1}
+.sec{background:var(--card);color:var(--blue)}
+/* chat */
+#msgs{flex:1;overflow-y:auto;padding:12px 12px 4px;display:flex;flex-direction:column;gap:3px}
+.b{max-width:78%;padding:8px 13px;border-radius:19px;background:var(--in);word-wrap:break-word;align-self:flex-start}
+.b.me{align-self:flex-end;background:var(--blue);color:#fff}
+.b .nm{font-size:12px;font-weight:600;margin-bottom:1px}
+.b img,.b video{max-width:100%;border-radius:12px;display:block;margin:2px 0}
+.b a{color:inherit;font-weight:600}
+.b .jn{margin-top:6px;border:0;border-radius:14px;padding:6px 14px;background:#34c759;color:#fff;font-weight:600;cursor:pointer}
+#f{display:flex;align-items:flex-end;gap:8px;padding:8px 10px calc(8px + env(safe-area-inset-bottom,0px));border-top:.5px solid var(--line)}
+#f label{font-size:26px;color:var(--blue);padding:0 4px 3px;cursor:pointer}
+#txt{flex:1;border:1px solid var(--line);border-radius:19px;padding:8px 14px;background:var(--card);outline:0}
+#snd{width:34px;height:34px;border-radius:50%;border:0;background:var(--blue);color:#fff;font-size:18px;cursor:pointer}
+/* sheet */
+#sheet,#menu{position:absolute;inset:0;background:rgba(0,0,0,.4);display:none;align-items:flex-end;z-index:5}
+#sheet.on,#menu.on{display:flex}
+.panel{background:var(--bg);width:100%;border-radius:16px 16px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom,0px))}
+.seg{display:flex;background:var(--in);border-radius:9px;padding:2px;margin:0 auto 14px;max-width:420px}
+.seg button{flex:1;border:0;background:none;padding:7px 2px;border-radius:7px;font-size:13px;cursor:pointer}
+.seg button.on{background:var(--card);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.15)}
+/* call */
+#call{position:absolute;inset:0;background:#000;z-index:9;display:none;flex-direction:column;color:#fff}
+#call.on{display:flex}
+#grid{flex:1;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr));grid-auto-rows:1fr;gap:4px;padding:calc(env(safe-area-inset-top,0px) + 6px) 4px 4px}
+.tile{position:relative;background:#1c1c1e;border-radius:12px;overflow:hidden;min-height:0}
+.tile video{width:100%;height:100%;object-fit:cover}
+.tile i{position:absolute;left:8px;bottom:6px;font-size:12px;font-style:normal;background:rgba(0,0,0,.5);padding:2px 8px;border-radius:8px}
+.ctl{display:flex;justify-content:center;gap:18px;padding:12px 0 calc(16px + env(safe-area-inset-bottom,0px))}
+.ctl button{width:56px;height:56px;border-radius:50%;border:0;background:#3a3a3c;color:#fff;font-size:24px;cursor:pointer}
+.ctl .end{background:#ff3b30}
+.ctl .off{background:#fff;color:#000}
+#ring{position:absolute;inset:0;z-index:12;background:linear-gradient(#1c3a5e,#0b1220);color:#fff;display:none;flex-direction:column;align-items:center;justify-content:space-between;padding:calc(env(safe-area-inset-top,0px) + 90px) 20px calc(env(safe-area-inset-bottom,0px) + 70px);text-align:center}
+#ring.on{display:flex}
+#ring .av{width:110px;height:110px;font-size:46px;margin:0 auto 18px}
+#ring h2{margin:0;font-size:30px}#ring p{opacity:.7;margin:6px 0 0}
+.rb{display:flex;gap:70px}
+.rb button{width:70px;height:70px;border-radius:50%;border:0;font-size:30px;color:#fff;cursor:pointer}
+.rb .no{background:#ff3b30}.rb .yes{background:#34c759}
+#bn{position:absolute;top:calc(env(safe-area-inset-top,0px) + 8px);left:12px;right:12px;z-index:11;background:var(--card);border-radius:14px;padding:12px 14px;box-shadow:0 6px 24px rgba(0,0,0,.25);display:none;cursor:pointer}
+#bn.on{display:block}
+</style>
+</head>
+<body>
+
+<section class="screen on" id="auth">
+  <div class="logo">💬</div>
+  <h1>Mahfil Chat</h1>
+  <p id="sub">Apne account mein login karo</p>
+  <div class="fields">
+    <input id="nm" type="text" placeholder="Aapka naam" style="display:none" maxlength="30">
+    <input id="em" type="email" placeholder="Email" autocomplete="email">
+    <input id="pw" type="password" placeholder="Password (kam se kam 6 akshar)" autocomplete="current-password">
+  </div>
+  <button class="main" id="ok">Login</button>
+  <button class="link" id="sw" style="margin:14px auto 0">Naya account banao</button>
+  <div class="msg" id="am"></div>
+  <a href="privacy.html" target="_blank" style="text-align:center;color:var(--mute);font-size:13px;margin-top:18px;text-decoration:none">Signup karke aap Privacy Policy aur Terms maante hain</a>
+</section>
+
+<section class="screen" id="main">
+  <div class="pane on" id="p-chats">
+    <div class="large"><h1>Chats</h1><button class="plus" id="new">+</button></div>
+    <div class="scroll" id="convs"></div>
+  </div>
+  <div class="pane" id="p-set">
+    <div class="large"><h1>Settings</h1></div>
+    <div class="scroll">
+      <div class="codecard"><small>Aapka personal code</small><div class="bigcode" id="mycode">-----</div>
+        <small>Ye code dost ko do. Wo ＋ dabake isse aapse connect ho jayega.</small></div>
+      <div class="two"><button class="main" id="cp">Code copy</button><button class="main sec" id="shr">Share</button></div>
+      <button class="main sec" id="pn" style="max-width:420px;margin-top:10px">🔔 Notifications chalu karo</button>
+      <div class="group" style="margin-top:18px;max-width:420px;margin-left:auto;margin-right:auto"><div class="row" style="cursor:default"><div><b id="myname"></b><small id="myem"></small></div></div></div>
+      <div id="blk"></div>
+      <div class="group" style="margin-top:18px;max-width:420px;margin-left:auto;margin-right:auto"><a class="row" href="privacy.html" target="_blank" style="color:var(--blue);text-decoration:none">🔒 Privacy Policy &amp; Terms</a></div>
+      <button class="link" id="out" style="display:block;margin:18px auto 4px;color:#ff3b30">Logout</button>
+      <button class="link" id="del" style="display:block;margin:0 auto 30px;color:#ff3b30;font-size:14px">Account hamesha ke liye delete karo</button>
+    </div>
+  </div>
+  <div class="pane" id="p-games"><div class="large"><h1>Games</h1></div><div class="scroll" id="glist"></div></div>
+  <div class="tabs glass"><button id="t1" class="on"><span>💬</span>Chats</button><button id="t3"><span>🎮</span>Games</button><button id="t2"><span>⚙️</span>Settings</button></div>
+</section>
+
+<section class="screen" id="chat">
+  <div class="bar glass"><button class="link" id="back">‹ Chats</button><div class="mid"><h2 id="ct"></h2><small id="cs"></small></div><button class="link" id="vc" style="font-size:24px">📹</button><button class="link" id="mn" style="font-size:24px">⋯</button></div>
+  <div id="msgs"></div>
+  <form id="f" class="glass">
+    <label>＋<input type="file" id="file" hidden></label>
+    <input id="txt" type="text" placeholder="Message" autocomplete="off">
+    <button id="snd">↑</button>
+  </form>
+</section>
+
+<section class="screen" id="game">
+  <div class="bar glass"><button class="link" id="gback">‹ Games</button><div class="mid"><h2 id="gt"></h2></div><span style="width:70px"></span></div>
+  <div id="gbody" style="flex:1;overflow:auto;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;gap:16px"></div>
+</section>
+
+<section id="call"><div id="grid"></div>
+  <div class="ctl"><button id="mic">🎤</button><button id="cam">📷</button><button class="end" id="end">📞</button></div>
+</section>
+
+<div id="menu"><div class="panel">
+  <button class="main" id="mrep" style="background:var(--card);color:#ff3b30">🚩 Report karo</button>
+  <button class="main" id="mblk" style="background:var(--card);color:#ff3b30">🚫 Block karo</button>
+  <button class="link" id="mcx" style="display:block;margin:8px auto 0">Cancel</button>
+</div></div>
+<div id="sheet"><div class="panel">
+  <div class="seg"><button class="on">Dost ka code</button><button>Group join</button><button>Naya group</button></div>
+  <div class="fields"><input id="fe" type="text" placeholder="Dost ka 5 ank ka code" autocomplete="off"></div>
+  <button class="main" id="start">Chat shuru karo</button>
+  <button class="link" id="cx" style="display:block;margin:8px auto 0">Cancel</button>
+  <div class="msg" id="sm"></div>
+</div></div>
+
+<section id="ring"><div><div class="av" id="ra"></div><h2 id="rn"></h2><p>📹 Video call aa rahi hai…</p></div>
+  <div class="rb"><button class="no" id="rno">✕</button><button class="yes" id="ryes">📹</button></div></section>
+<div id="bn"></div><div id="aud" hidden></div>
+
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/livekit-client@2.5.0/dist/livekit-client.umd.min.js"></script>
+<script src="games.js"></script>
+<script>
+const { SUPABASE_URL, SUPABASE_KEY, LIVEKIT_URL, VAPID_PUBLIC } = window.CONFIG || {};
+window.ADS_CLIENT = (window.CONFIG || {}).ADS_CLIENT || "";
+window.ADS_SLOT = (window.CONFIG || {}).ADS_SLOT || "";
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js").catch(() => {});
+  navigator.serviceWorker.addEventListener("message", e => { if (e.data && e.data.chat) fromNotif(e.data.chat, e.data.call); });
+}
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const $ = id => document.getElementById(id);
+if (!SUPABASE_URL || SUPABASE_URL.includes("YOUR-PROJECT")) $("am").textContent = "⚠️ config.js mein Supabase URL aur key bharo.";
+const COLORS = ["#ff9500","#ff2d55","#5856d6","#34c759","#af52de","#00b4d8","#ff6b35"];
+let me, prof = {}, cur, chan, signup = false, seen = new Set(), names = {}, mode = 0, call = null, blocked = new Set();
+
+const show = id => document.querySelectorAll(".screen").forEach(s => s.classList.toggle("on", s.id === id));
+const col = s => COLORS[[...(s || "x")].reduce((a, c) => a + c.charCodeAt(0), 0) % COLORS.length];
+const avatar = n => { const d = document.createElement("div"); d.className = "av"; d.style.background = col(n); d.textContent = (n || "?").trim().slice(0, 1).toUpperCase(); return d; };
+
+/* ---------- Login / Signup ---------- */
+$("sw").onclick = () => {
+  signup = !signup;
+  $("nm").style.display = signup ? "block" : "none";
+  $("ok").textContent = signup ? "Account banao" : "Login";
+  $("sw").textContent = signup ? "Pehle se account hai? Login" : "Naya account banao";
+  $("sub").textContent = signup ? "Naya account banao" : "Apne account mein login karo";
+  $("am").textContent = "";
+};
+$("ok").onclick = async () => {
+  const email = $("em").value.trim(), password = $("pw").value, name = $("nm").value.trim();
+  $("am").style.color = "#ff3b30";
+  if (!email || password.length < 6) { $("am").textContent = "Email aur 6+ akshar ka password daalo."; return; }
+  $("ok").disabled = true; $("am").textContent = "";
+  const r = signup
+    ? await sb.auth.signUp({ email, password, options: { data: { name: name || email.split("@")[0] } } })
+    : await sb.auth.signInWithPassword({ email, password });
+  $("ok").disabled = false;
+  if (r.error) { $("am").textContent = r.error.message; return; }
+  if (signup && !r.data.session) { $("am").style.color = "#34c759"; $("am").textContent = "Email par bheje link se confirm karo, phir login karo."; return; }
+  boot(r.data.session);
+};
+$("out").onclick = async () => { await sb.auth.signOut(); location.reload(); };
+
+async function boot(session) {
+  me = session.user;
+  const { data } = await sb.from("profiles").select("name,code,email").eq("id", me.id).single();
+  prof = data || {};
+  $("mycode").textContent = prof.code || "-----"; $("myname").textContent = prof.name || ""; $("myem").textContent = prof.email || me.email;
+  show("main"); loadList(); listen(); pushStatus(); loadBlocks(); renderGames();
+  const q = new URLSearchParams(location.search);
+  if (q.get("chat")) fromNotif(q.get("chat"), q.get("call") === "1");
+  history.replaceState(null, "", location.pathname);
+}
+sb.auth.getSession().then(({ data }) => { if (data.session) boot(data.session); });
+
+/* ---------- Tabs, Settings ---------- */
+const TABS = { 1: ["p-chats", "t1"], 2: ["p-set", "t2"], 3: ["p-games", "t3"] };
+const tab = n => Object.entries(TABS).forEach(([k, [p, t]]) => { $(p).classList.toggle("on", +k === n); $(t).classList.toggle("on", +k === n); });
+$("t1").onclick = () => { tab(1); loadList(); }; $("t2").onclick = () => { tab(2); renderBlocked(); }; $("t3").onclick = () => tab(3);
+$("cp").onclick = async () => { try { await navigator.clipboard.writeText(prof.code); $("cp").textContent = "Copy ho gaya ✓"; setTimeout(() => $("cp").textContent = "Code copy", 1500); } catch (e) { prompt("Code:", prof.code); } };
+$("shr").onclick = () => {
+  const text = `Mahfil Chat par mujhse chat karo! Mera code: ${prof.code}`, url = location.origin + location.pathname;
+  navigator.share ? navigator.share({ text, url }).catch(() => {}) : prompt("Copy karke bhejo:", text + " " + url);
+};
+
+/* ---------- Chats list ---------- */
+async function loadList() {
+  const { data, error } = await sb.rpc("my_chats"), box = $("convs"); box.innerHTML = "";
+  if (error || !data.length) { box.innerHTML = '<div class="empty"></div>'; box.firstChild.innerHTML = error ? "" : "Abhi koi chat nahi.<br>＋ dabao aur dost ka code daalo."; if (error) box.firstChild.textContent = error.message; return; }
+  const g = document.createElement("div"); g.className = "group";
+  data.forEach(c => {
+    const r = document.createElement("button"); r.className = "row"; const t = document.createElement("div");
+    t.innerHTML = "<b></b><small></small>"; t.children[0].textContent = (c.kind === "group" ? "👥 " : "") + (c.title || "Chat");
+    t.children[1].textContent = c.kind === "group" ? "Group · code " + c.code : "Personal chat";
+    r.append(avatar(c.title), t); r.onclick = () => openChat(c); g.appendChild(r);
+  });
+  box.appendChild(g);
+}
+
+/* ---------- ＋ sheet: dost / group join / naya group ---------- */
+const PH = ["Dost ka 5 ank ka code", "Group code (jaise A1B2C3)", "Group ka naam"], BT = ["Chat shuru karo", "Group join karo", "Group banao"];
+document.querySelectorAll(".seg button").forEach((b, i) => b.onclick = () => {
+  mode = i; document.querySelectorAll(".seg button").forEach((x, j) => x.classList.toggle("on", i === j));
+  $("fe").placeholder = PH[i]; $("start").textContent = BT[i]; $("sm").textContent = "";
+});
+$("new").onclick = () => { $("sm").textContent = ""; $("fe").value = ""; $("sheet").classList.add("on"); $("fe").focus(); };
+$("cx").onclick = () => $("sheet").classList.remove("on");
+$("start").onclick = async () => {
+  const v = $("fe").value.trim(); $("sm").textContent = ""; if (!v) return;
+  const { data, error } = await sb.rpc(["start_dm", "join_group", "create_group"][mode],
+    [{ friend_code: v }, { gcode: v }, { gname: v }][mode]);
+  if (error) { $("sm").textContent = error.message; return; }
+  $("sheet").classList.remove("on");
+  const { data: cs } = await sb.rpc("my_chats"), c = (cs || []).find(x => x.id === data);
+  if (c) openChat(c);
+};
+
+/* ---------- Chat ---------- */
+async function openChat(c) {
+  cur = c; seen = new Set(); names = {};
+  $("ct").textContent = c.title; $("cs").textContent = c.kind === "group" ? "Group code: " + c.code : ""; $("msgs").innerHTML = ""; show("chat");
+  const { data: mem } = await sb.from("members").select("user_id").eq("conversation_id", c.id);
+  const { data: ps } = await sb.from("profiles").select("id,name").in("id", (mem || []).map(x => x.user_id));
+  (ps || []).forEach(p => names[p.id] = p.name);
+  c.others = (mem || []).map(x => x.user_id).filter(i => i !== me.id);
+  const { data } = await sb.from("messages").select("*").eq("conversation_id", c.id).order("created_at").limit(300);
+  (data || []).forEach(add);
+}
+$("back").onclick = () => { cur = null; show("main"); loadList(); };
+
+function add(m) {
+  if (blocked.has(m.sender) || seen.has(m.id)) return; seen.add(m.id);
+  const mine = m.sender === me.id, el = document.createElement("div"); el.className = "b" + (mine ? " me" : "");
+  if (!mine && cur.kind === "group") {
+    const n = document.createElement("div"); n.className = "nm"; n.style.color = col(m.sender); n.textContent = names[m.sender] || "…"; el.appendChild(n);
+    if (!names[m.sender]) sb.from("profiles").select("name").eq("id", m.sender).single().then(({ data }) => { if (data) { names[m.sender] = data.name; n.textContent = data.name; } });
+  }
+  if (m.file_type === "call") {
+    const t = document.createElement("div"); t.textContent = "📹 Video call shuru hui"; el.appendChild(t);
+    const j = document.createElement("button"); j.className = "jn"; j.textContent = "Join karo"; j.onclick = joinCall; el.appendChild(j);
+  } else if (m.file_url) {
+    const ty = m.file_type || "";
+    if (ty.startsWith("image/")) { const i = document.createElement("img"); i.src = m.file_url; el.appendChild(i); }
+    else if (ty.startsWith("video/")) { const v = document.createElement("video"); v.src = m.file_url; v.controls = true; v.playsInline = true; el.appendChild(v); }
+    else { const a = document.createElement("a"); a.href = m.file_url; a.target = "_blank"; a.rel = "noopener"; a.textContent = "📄 " + (m.file_name || "File"); el.appendChild(a); }
+  }
+  if (m.body) { const t = document.createElement("div"); t.textContent = m.body; el.appendChild(t); }
+  const box = $("msgs"); box.appendChild(el); box.scrollTop = box.scrollHeight;
+}
+async function send(fields) {
+  const { data, error } = await sb.from("messages").insert({ conversation_id: cur.id, ...fields }).select().single();
+  if (error) alert(error.message); else add(data);
+}
+$("f").onsubmit = e => { e.preventDefault(); const body = $("txt").value.trim(); if (!body) return; $("txt").value = ""; send({ body }); };
+$("file").onchange = async e => {
+  const f = e.target.files[0]; if (!f) return;
+  if (f.size > 50 * 1024 * 1024) { alert("File 50 MB se choti honi chahiye."); return; }
+  $("snd").textContent = "…";
+  const path = `${cur.id}/${Date.now()}_${f.name.replace(/[^\w.\-]/g, "_")}`;
+  const { error } = await sb.storage.from("files").upload(path, f, { contentType: f.type });
+  if (error) alert("Upload fail: " + error.message);
+  else send({ file_url: sb.storage.from("files").getPublicUrl(path).data.publicUrl, file_type: f.type, file_name: f.name });
+  $("snd").textContent = "↑"; e.target.value = "";
+};
+
+/* ---------- Inbox: naye messages, call ring, banner ---------- */
+let rt, rctx, bt;
+function listen() {
+  sb.channel("inbox").on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, async e => {
+    const m = e.new; if (m.sender === me.id || blocked.has(m.sender)) return;
+    const here = cur && cur.id === m.conversation_id;
+    if (here) add(m);
+    const { data: cs } = await sb.rpc("my_chats"), c = (cs || []).find(x => x.id === m.conversation_id); if (!c) return;
+    const { data: p } = await sb.from("profiles").select("name").eq("id", m.sender).single(), who = p ? p.name : "Dost";
+    if (m.file_type === "call") { if (Date.now() - new Date(m.created_at) < 60000) ring(c, who); }
+    else if (!here) {
+      banner((c.kind === "group" ? c.title + " · " : "") + who + ": " + (m.body || "📎 File"), () => openChat(c));
+      if ($("main").classList.contains("on")) loadList();
+    }
+  }).subscribe();
+}
+function banner(t, fn) {
+  const b = $("bn"); b.textContent = t; b.classList.add("on");
+  b.onclick = () => { b.classList.remove("on"); fn && fn(); };
+  clearTimeout(bt); bt = setTimeout(() => b.classList.remove("on"), 4500);
+}
+function beep() {
+  try { rctx = rctx || new AudioContext(); const o = rctx.createOscillator(), g = rctx.createGain(); o.frequency.value = 880; g.gain.value = .15; o.connect(g); g.connect(rctx.destination); o.start(); o.stop(rctx.currentTime + .35); } catch (e) {}
+  if (navigator.vibrate) navigator.vibrate([300, 150, 300]);
+}
+function ring(c, who) {
+  if (call || $("ring").classList.contains("on")) return;
+  who = who || c.title; $("rn").textContent = who; const a = $("ra"); a.style.background = col(who); a.textContent = who.slice(0, 1).toUpperCase();
+  $("ring").classList.add("on"); beep(); rt = setInterval(beep, 2000); ring.c = c; ring.to = setTimeout(stopRing, 30000);
+}
+function stopRing() { clearInterval(rt); clearTimeout(ring.to); $("ring").classList.remove("on"); }
+$("rno").onclick = stopRing;
+$("ryes").onclick = async () => { const c = ring.c; stopRing(); await openChat(c); joinCall(); };
+async function fromNotif(id, isCall) {
+  const { data: cs } = await sb.rpc("my_chats"), c = (cs || []).find(x => x.id === id); if (!c) return;
+  await openChat(c); if (isCall) ring(c, c.title);
+}
+
+/* ---------- Push notifications ---------- */
+const u8 = s => { const b = atob((s + "=".repeat((4 - s.length % 4) % 4)).replace(/-/g, "+").replace(/_/g, "/")); return Uint8Array.from(b, c => c.charCodeAt(0)); };
+function pushStatus() { $("pn").textContent = ("Notification" in window && Notification.permission === "granted") ? "🔔 Notifications chalu hain ✓" : "🔔 Notifications chalu karo"; }
+$("pn").onclick = async () => {
+  if (!VAPID_PUBLIC) return alert("Pehle index.html mein VAPID_PUBLIC daalo (SETUP.md dekho).");
+  if (!("serviceWorker" in navigator && "PushManager" in window)) return alert("Is browser mein notification nahi hai. iPhone par pehle Share → Add to Home Screen karo, phir app wahin se kholo.");
+  if (await Notification.requestPermission() !== "granted") return alert("Notification ki permission nahi mili.");
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: u8(VAPID_PUBLIC) }), j = sub.toJSON();
+    const { error } = await sb.from("push_subs").upsert({ user_id: me.id, endpoint: j.endpoint, sub: j }, { onConflict: "endpoint" });
+    if (error) throw error;
+  } catch (e) { alert("Notification setup fail: " + e.message); }
+  pushStatus();
+};
+
+/* ---------- Video call: LiveKit (agar URL set hai) warna simple WebRTC mesh ---------- */
+const ICE = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }, { urls: "stun:stun1.l.google.com:19302" }] };
+$("vc").onclick = async () => { if (call) return; await send({ file_type: "call", body: "" }); joinCall(); };
+
+function tile(id, stream, mine, label) {
+  let t = $("t-" + id);
+  if (!t) {
+    t = document.createElement("div"); t.className = "tile"; t.id = "t-" + id;
+    const v = document.createElement("video"); v.autoplay = true; v.playsInline = true; v.muted = mine; t.appendChild(v);
+    const i = document.createElement("i"); i.textContent = mine ? "Aap" : (label || names[id] || "Dost"); t.appendChild(i); $("grid").appendChild(t);
+  }
+  t.firstChild.srcObject = stream;
+}
+function drop(id) { const p = call && call.pcs[id]; if (p) { p.close(); delete call.pcs[id]; } const t = $("t-" + id); if (t) t.remove(); }
+async function flush(id) { const p = call.pcs[id]; for (const c of (call.q[id] || [])) try { await p.addIceCandidate(c); } catch (e) {} call.q[id] = []; }
+function mk(id) {
+  if (call.pcs[id]) call.pcs[id].close();
+  const pc = new RTCPeerConnection(ICE); call.pcs[id] = pc;
+  call.stream.getTracks().forEach(t => pc.addTrack(t, call.stream));
+  pc.onicecandidate = e => e.candidate && call.sig({ t: "ice", to: id, c: e.candidate });
+  pc.ontrack = e => tile(id, e.streams[0], false);
+  pc.onconnectionstatechange = () => { if (pc.connectionState === "failed") drop(id); };
+  return pc;
+}
+async function joinCall() {
+  if (call) return;
+  if (LIVEKIT_URL) return joinLK();
+  let stream;
+  try { stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: true }); }
+  catch (e) { alert("Camera aur mic ki permission do (site https par honi chahiye)."); return; }
+  const ch = sb.channel("call-" + cur.id, { config: { broadcast: { self: false } } });
+  call = { stream, ch, pcs: {}, q: {} };
+  call.sig = o => ch.send({ type: "broadcast", event: "sig", payload: { from: me.id, ...o } });
+  tile("me", stream, true); $("call").classList.add("on");
+  ch.on("broadcast", { event: "sig" }, async ({ payload: p }) => {
+    if (!call || (p.to && p.to !== me.id)) return;
+    try {
+      if (p.t === "hello") { const pc = mk(p.from); await pc.setLocalDescription(await pc.createOffer()); call.sig({ t: "offer", to: p.from, sdp: pc.localDescription }); }
+      else if (p.t === "offer") { const pc = mk(p.from); await pc.setRemoteDescription(p.sdp); await flush(p.from); await pc.setLocalDescription(await pc.createAnswer()); call.sig({ t: "answer", to: p.from, sdp: pc.localDescription }); }
+      else if (p.t === "answer") { const pc = call.pcs[p.from]; if (pc) { await pc.setRemoteDescription(p.sdp); await flush(p.from); } }
+      else if (p.t === "ice") { const pc = call.pcs[p.from]; if (pc && pc.remoteDescription) await pc.addIceCandidate(p.c); else (call.q[p.from] = call.q[p.from] || []).push(p.c); }
+      else if (p.t === "bye") drop(p.from);
+    } catch (e) { console.error(e); }
+  }).subscribe(s => { if (s === "SUBSCRIBED") call.sig({ t: "hello" }); });
+}
+async function joinLK() {
+  const L = window.LivekitClient; if (!L) return alert("LiveKit load nahi hua, internet check karo.");
+  const { data, error } = await sb.functions.invoke("livekit-token", { body: { room: cur.id, name: prof.name } });
+  if (error || !data || !data.token) return alert("Call token nahi mila: " + (error ? error.message : "") + " (SETUP.md ka LiveKit step dekho)");
+  const room = new L.Room({ adaptiveStream: true, dynacast: true });
+  call = { lk: room, pcs: {}, q: {}, mic: true, cam: true };
+  room.on(L.RoomEvent.TrackSubscribed, (t, pub, p) => {
+    if (t.kind === "video") tile(p.identity, new MediaStream([t.mediaStreamTrack]), false, p.name); else $("aud").appendChild(t.attach());
+  });
+  room.on(L.RoomEvent.TrackUnsubscribed, (t, pub, p) => { if (t.kind === "video") drop(p.identity); else t.detach().forEach(e => e.remove()); });
+  room.on(L.RoomEvent.ParticipantDisconnected, p => drop(p.identity));
+  room.on(L.RoomEvent.Disconnected, leaveCall);
+  $("call").classList.add("on");
+  try {
+    await room.connect(LIVEKIT_URL, data.token);
+    await room.localParticipant.enableCameraAndMicrophone();
+    const cp = room.localParticipant.getTrackPublication(L.Track.Source.Camera);
+    if (cp && cp.track) tile("me", new MediaStream([cp.track.mediaStreamTrack]), true);
+  } catch (e) { alert("Camera/mic ya connection error: " + e.message); leaveCall(); }
+}
+function leaveCall() {
+  if (!call) return; const c = call; call = null;
+  if (c.lk) c.lk.disconnect();
+  else { c.sig({ t: "bye" }); Object.values(c.pcs).forEach(p => p.close()); c.stream.getTracks().forEach(t => t.stop()); sb.removeChannel(c.ch); }
+  $("grid").innerHTML = ""; $("aud").innerHTML = ""; $("call").classList.remove("on");
+  $("mic").classList.remove("off"); $("cam").classList.remove("off");
+}
+$("end").onclick = leaveCall; window.addEventListener("pagehide", leaveCall);
+function toggle(kind) {
+  if (!call) return; const btn = $(kind === "mic" ? "mic" : "cam");
+  if (call.lk) { call[kind] = !call[kind]; const lp = call.lk.localParticipant; kind === "mic" ? lp.setMicrophoneEnabled(call.mic) : lp.setCameraEnabled(call.cam); btn.classList.toggle("off", !call[kind]); }
+  else { const t = (kind === "mic" ? call.stream.getAudioTracks() : call.stream.getVideoTracks())[0]; t.enabled = !t.enabled; btn.classList.toggle("off", !t.enabled); }
+}
+$("mic").onclick = () => toggle("mic"); $("cam").onclick = () => toggle("cam");
+
+/* ---------- Block / Report / Account delete ---------- */
+async function loadBlocks() { const { data } = await sb.from("blocks").select("blocked"); blocked = new Set((data || []).map(x => x.blocked)); }
+async function renderBlocked() {
+  await loadBlocks(); const box = $("blk"); box.innerHTML = ""; if (!blocked.size) return;
+  const { data: ps } = await sb.from("profiles").select("id,name").in("id", [...blocked]);
+  const g = document.createElement("div"); g.className = "group"; g.style.cssText = "margin-top:18px;max-width:420px;margin-left:auto;margin-right:auto";
+  [...blocked].forEach(id => {
+    const p = (ps || []).find(x => x.id === id), r = document.createElement("div"); r.className = "row"; r.style.cursor = "default";
+    const t = document.createElement("div"); t.style.flex = "1"; t.textContent = "🚫 " + (p ? p.name : "Blocked user");
+    const b = document.createElement("button"); b.className = "link"; b.textContent = "Unblock";
+    b.onclick = async () => { await sb.from("blocks").delete().eq("blocked", id); renderBlocked(); };
+    r.append(t, b); g.appendChild(r);
+  });
+  box.appendChild(g);
+}
+$("mn").onclick = () => { $("mblk").style.display = cur.kind === "dm" ? "block" : "none"; $("menu").classList.add("on"); };
+$("mcx").onclick = () => $("menu").classList.remove("on");
+$("mrep").onclick = async () => {
+  $("menu").classList.remove("on");
+  const reason = prompt("Report ka karan likho (jaise spam, gandi baat, dhokha):"); if (!reason) return;
+  const { error } = await sb.from("reports").insert({ conversation_id: cur.id, reported_user: cur.kind === "dm" ? cur.others[0] : null, reason: reason.slice(0, 300) });
+  alert(error ? error.message : "Report bhej di gayi. Dhanyavaad.");
+};
+$("mblk").onclick = async () => {
+  $("menu").classList.remove("on"); const id = cur.others[0];
+  if (!id || !confirm("Is user ko block karein? Wo aapko message nahi bhej payega.")) return;
+  const { error } = await sb.from("blocks").insert({ blocked: id }); if (error) return alert(error.message);
+  blocked.add(id); cur = null; show("main"); loadList();
+};
+$("del").onclick = async () => {
+  if (!confirm("Account aur saari chats hamesha ke liye delete ho jayengi. Pakka?")) return;
+  if (prompt("Confirm karne ke liye DELETE likho") !== "DELETE") return;
+  const { error } = await sb.rpc("delete_my_account"); if (error) return alert(error.message);
+  await sb.auth.signOut(); location.reload();
+};
+
+/* ---------- Games ---------- */
+let gstop = null;
+function renderGames() {
+  const box = $("glist"); box.innerHTML = ""; if (!window.GAMES) return;
+  const g = document.createElement("div"); g.className = "group";
+  GAMES.forEach(x => {
+    const r = document.createElement("button"); r.className = "row";
+    const a = document.createElement("div"); a.className = "av"; a.style.background = "#5856d6"; a.style.fontSize = "22px"; a.textContent = x.emoji;
+    const t = document.createElement("div"); t.innerHTML = "<b></b><small></small>"; t.children[0].textContent = x.name; t.children[1].textContent = x.desc;
+    r.append(a, t); r.onclick = () => playGame(x); g.appendChild(r);
+  });
+  box.appendChild(g);
+  const ad = document.createElement("div"); ad.style.marginTop = "14px"; box.appendChild(ad); if (window.renderAd) renderAd(ad);
+}
+function playGame(x) { $("gt").textContent = x.name; const b = $("gbody"); b.innerHTML = ""; show("game"); gstop = x.start(b) || null; }
+$("gback").onclick = () => { if (gstop) gstop(); gstop = null; $("gbody").innerHTML = ""; show("main"); };
+</script>
+</body>
+</html>
