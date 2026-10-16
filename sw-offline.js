@@ -4,7 +4,7 @@ try { importScripts("sw.js"); } catch (e) {}
 
 const SHELL = "mahfil-shell-v1", MEDIA = "mahfil-media-v1";
 const PRE = [
-  "./", "index.html", "config.js", "games.js", "manifest.json", "icon-192.png", "privacy.html",
+  "./", "index.html", "config.js", "games.js", "games2.js", "manifest.json", "icon-192.png", "privacy.html",
   "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js",
   "https://cdn.jsdelivr.net/npm/livekit-client@2.5.0/dist/livekit-client.umd.min.js"
 ];

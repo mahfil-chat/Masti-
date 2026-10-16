@@ -318,7 +318,9 @@ button,input{font:inherit;color:inherit}
 .codebox small{display:block;color:var(--mute);font-size:12.5px}
 .codebox .bigcode{font-size:30px;font-weight:700;letter-spacing:8px;margin:2px 0;padding-left:8px;filter:blur(9px);transition:filter .2s;user-select:none;-webkit-user-select:none}
 .codebox.show .bigcode{filter:none;user-select:text;-webkit-user-select:text}
-#offb{display:none;margin:6px 14px 0;padding:7px 10px;border-radius:10px;background:rgba(255,149,0,.16);color:#c77700;font-size:13px;text-align:center}
+#offb{display:none;place-items:center;width:34px;height:34px;border-radius:50%;background:rgba(255,149,0,.16);color:#ff9500;flex:none;animation:offin .25s ease}
+#offb svg{width:19px;height:19px}
+@keyframes offin{from{transform:scale(.6);opacity:0}}
 </style>
 </head>
 <body>
@@ -345,10 +347,8 @@ button,input{font:inherit;color:inherit}
 
 <section class="screen" id="main">
   <div class="pane on" id="p-chats">
-    <div class="large"><h1>Mahfil 💬</h1><button class="plus" id="new">+</button></div>
-    <div class="srch"><input id="q" type="search" placeholder="Chat dhundho"></div>
-    <div id="offb">📴 Internet nahi hai — purani chats dekh sakte ho</div>
-    <div class="scroll" id="convs"></div>
+    <div class="large"><h1>Mahfil 💬</h1><span id="offb" title="Offline" aria-label="Offline"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8.8a15 15 0 0 1 4.2-2.6"/><path d="M10 5.1A15 15 0 0 1 22 8.8"/><path d="M5 12.5a10 10 0 0 1 5.2-2.7"/><path d="M14 10a10 10 0 0 1 5 2.5"/><path d="M8.5 16.4a5 5 0 0 1 7 0"/><path d="M12 20h.01"/><path d="M2 2l20 20"/></svg></span><button class="plus" id="new">+</button></div>
+    <div class="srch"><input id="q" type="search" placeholder="Chat dhundho"></div>    <div class="scroll" id="convs"></div>
   </div>
   <div class="pane" id="p-set">
     <div class="large"><h1>Settings ⚙️</h1><button class="ib" id="gdi" title="Guide" aria-label="Guide">📖</button></div>
@@ -444,6 +444,7 @@ button,input{font:inherit;color:inherit}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/livekit-client@2.5.0/dist/livekit-client.umd.min.js"></script>
 <script src="games.js"></script>
+<script src="games2.js"></script>
 <script>
 const { SUPABASE_URL, SUPABASE_KEY, LIVEKIT_URL, VAPID_PUBLIC } = window.CONFIG || {};
 window.ADS_CLIENT = (window.CONFIG || {}).ADS_CLIENT || "";
@@ -529,7 +530,7 @@ async function flushOutbox() {
   } finally { flushing = false; }
   if (did) loadList();
 }
-function netUI() { const b = $("offb"); if (b) b.style.display = isOff() ? "block" : "none"; if (cur) headStatus(); }
+function netUI() { const b = $("offb"); if (b) b.style.display = isOff() ? "grid" : "none"; if (cur) headStatus(); }
 async function clearOffline() { try { localStorage.removeItem("mc_last_user"); } catch (e) {} await IDB.clear(); }
 async function bootOffline(lu) {
   if (booted) return; booted = true; offlineBoot = true; me = { id: lu.id, email: lu.email };
