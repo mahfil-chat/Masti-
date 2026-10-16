@@ -28,10 +28,11 @@
   --blue:#00a884;--blue2:#06cf9c;--in:#202c33;--out:#005c4b;--wall:#0b141a;--dot:rgba(255,255,255,.04);--seg:#202c33;
   --bar:rgba(17,27,33,.92);--tickgrey:#9db5ae}}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{height:100%;margin:0;overflow:hidden}
+html,body{height:100%;margin:0;overflow:hidden;overscroll-behavior:none}
+body{position:fixed;left:0;right:0;top:0;width:100%}
 body{background:var(--bg);color:var(--ink);font:16px/1.38 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,"Noto Sans Devanagari",sans-serif}
 button,input{font:inherit;color:inherit}
-.screen{display:none;position:absolute;inset:0;flex-direction:column}
+.screen{display:none;position:fixed;left:0;right:0;top:var(--vt,0px);height:var(--app-h,100%);flex-direction:column}
 .screen.on{display:flex}
 .glass{background:var(--bar);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
 .bar{padding:calc(env(safe-area-inset-top,0px) + 8px) 10px 8px;border-bottom:.5px solid var(--line);display:flex;align-items:center;gap:6px;min-height:56px}
@@ -70,6 +71,7 @@ button,input{font:inherit;color:inherit}
 .srch:before{content:"🔍";position:absolute;left:12px;top:9px;font-size:15px;opacity:.6}
 .chat{display:flex;align-items:center;gap:12px;padding:10px 14px;cursor:pointer;width:100%;border:0;background:none;text-align:left;position:relative}
 .chat:active{background:var(--line)}
+.chat{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
 .chat .mid{flex:1;min-width:0}
 .chat .t1{display:flex;gap:8px;align-items:baseline}
 .chat .t1 b{flex:1;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -278,6 +280,44 @@ button,input{font:inherit;color:inherit}
 .sw{margin-left:auto;width:46px;height:28px;border-radius:14px;background:var(--line);position:relative;flex:none;transition:background .2s}
 .sw::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.35);transition:left .2s}
 .sw.on{background:var(--blue2)}.sw.on::after{left:21px}
+
+/* ===== iOS look ===== */
+:root{--blue:#007aff;--blue2:#0a84ff;--bg:#f2f2f7;--card:#fff;--ink:#000;--mute:#8e8e93;--line:rgba(60,60,67,.2);--in:#e9e9eb;--out:#007aff;--wall:#fff;--dot:transparent;--seg:rgba(118,118,128,.12);--bar:rgba(249,249,249,.86);--red:#ff3b30;--online:#34c759;--tick:#fff;--tickgrey:rgba(255,255,255,.7)}
+:root[data-theme="dark"]{--bg:#000;--card:#1c1c1e;--ink:#fff;--in:#262629;--out:#0a84ff;--wall:#000;--seg:rgba(118,118,128,.24);--bar:rgba(29,29,31,.86);--line:rgba(84,84,88,.55)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#000;--card:#1c1c1e;--ink:#fff;--in:#262629;--out:#0a84ff;--wall:#000;--seg:rgba(118,118,128,.24);--bar:rgba(29,29,31,.86);--line:rgba(84,84,88,.55)}}
+.large h1{background:none;-webkit-text-fill-color:var(--ink);color:var(--ink);font-size:34px;font-weight:700;letter-spacing:.35px}
+.group,.mecard,.fields{border-radius:10px;box-shadow:none}
+.mecard{border-radius:10px}
+.scroll{padding-top:6px}
+.bar h2{font-weight:600;font-size:17px}.link,.ib{color:var(--blue)}
+.link{font-size:17px}
+.plus{background:var(--blue);box-shadow:none;width:32px;height:32px;font-size:22px}
+.main{background:var(--blue);box-shadow:none;border-radius:12px;font-weight:600;padding:14px}
+.main.sec{background:var(--card);color:var(--blue)}
+.tabs{border-top:.5px solid var(--line);padding-top:7px}.tabs button{font-size:10px;color:var(--mute)}.tabs button.on{color:var(--blue)}
+.srch input{background:var(--seg);border:0;border-radius:10px;color:var(--ink)}
+.b{border-radius:18px;padding:7px 12px 5px;box-shadow:none}
+.b.me{color:#fff;border-top-left-radius:18px;border-top-right-radius:18px;border-bottom-right-radius:5px}
+.b:not(.me){border-top-left-radius:18px;border-bottom-left-radius:5px;color:var(--ink)}
+.b.me .meta{color:rgba(255,255,255,.75)}.b.me a{color:#fff;text-decoration:underline}
+.b.me .qt{background:rgba(255,255,255,.2);border-left-color:#fff}.b.me .qt b,.b.me .qt span{color:#fff}
+.b.me .tk.rd{color:#fff}
+.day{background:none;box-shadow:none;color:var(--mute);font-weight:500}
+#f{background:var(--bar)}
+#f .pill{border:.5px solid var(--line);border-radius:19px;box-shadow:none;min-height:36px;background:var(--card)}
+#snd{width:34px;height:34px;margin-bottom:2px;background:var(--blue);box-shadow:none;font-size:17px}
+.panel{border-radius:14px 14px 0 0}
+.mi{border-radius:14px;color:var(--blue);font-weight:400;font-size:19px;padding:15px}.mi.red{color:var(--red)}
+.seg,.tseg{border-radius:9px;background:var(--seg)}.seg button,.tseg button{border-radius:7px;font-size:13px;font-weight:500}
+.seg button.on,.tseg button.on{background:var(--card);box-shadow:0 3px 8px rgba(0,0,0,.12),0 1px 1px rgba(0,0,0,.1)}
+:root[data-theme="dark"] .seg button.on,:root[data-theme="dark"] .tseg button.on{background:#636366}
+.sw{width:51px;height:31px;border-radius:16px;background:rgba(120,120,128,.32)}
+.sw::after{top:2px;left:2px;width:27px;height:27px;box-shadow:0 3px 8px rgba(0,0,0,.15),0 1px 1px rgba(0,0,0,.16)}
+.sw.on{background:#34c759}.sw.on::after{left:22px}
+.codebox{display:block;width:100%;max-width:300px;margin:14px auto 0;background:var(--card);border:0;border-radius:12px;padding:10px 14px;text-align:center;cursor:pointer;color:var(--ink)}
+.codebox small{display:block;color:var(--mute);font-size:12.5px}
+.codebox .bigcode{font-size:30px;font-weight:700;letter-spacing:8px;margin:2px 0;padding-left:8px;filter:blur(9px);transition:filter .2s;user-select:none;-webkit-user-select:none}
+.codebox.show .bigcode{filter:none;user-select:text;-webkit-user-select:text}
 </style>
 </head>
 <body>
@@ -312,11 +352,13 @@ button,input{font:inherit;color:inherit}
     <div class="large"><h1>Settings ⚙️</h1><button class="ib" id="gdi" title="Guide" aria-label="Guide">📖</button></div>
     <div class="scroll">
       <div class="mecard" id="mecard"></div>
-      <div class="codecard"><small>Aapka personal code 🔑</small><div class="bigcode" id="mycode">-----</div>
-        <small>Ye code dost ko do. Wo ＋ dabake isse aapse connect ho jayega.</small></div>
-      <div class="two"><button class="main" id="cp">📋 Code copy</button><button class="main sec" id="shr">📤 Share</button></div>
+      <button class="codebox" id="codebox" type="button"><small>🔑 Aapka personal code</small><div class="bigcode" id="mycode">-----</div><small id="codehint">Dikhane ke liye dabao</small></button>
+      <div id="codeacts" style="display:none"><div class="two" style="max-width:300px"><button class="main" id="cp">📋 Code copy</button><button class="main sec" id="shr">📤 Share</button></div>
+        <small style="display:block;text-align:center;color:var(--mute);margin:8px auto 0;max-width:300px">Ye code dost ko do. Wo ＋ dabake isse aapse connect ho jayega.</small></div>
       <div class="group" style="max-width:420px;margin:14px auto 0;padding:12px 14px"><div style="font-weight:600;margin-bottom:8px">🎨 Theme</div>
         <div class="tseg" id="tseg" style="margin:0"><button data-t="auto">🌗 Auto</button><button data-t="light">☀️ Light</button><button data-t="dark">🌙 Dark</button></div></div>
+      <div class="group" style="max-width:420px;margin:14px auto 0;padding:12px 14px"><div style="font-weight:600;margin-bottom:8px">🌐 भाषा / Language</div>
+        <div class="tseg" id="lseg" style="margin:0"><button data-l="hi">हिन्दी</button><button data-l="en">English</button><button data-l="hg">Hinglish</button></div></div>
       <div class="group" style="max-width:420px;margin:14px auto 0">
         <button class="row" id="rinfo"><span style="font-size:22px">ℹ️</span><div><b>App info</b><small>Mahfil Chat mein kya-kya hai</small></div></button>
         <button class="row" id="rguide"><span style="font-size:22px">📖</span><div><b>Guide — app kaise chalayein</b><small>Step-by-step samjhaya hua</small></div></button>
@@ -634,6 +676,9 @@ async function loadList() {
     if (m.sender !== me.id && !m.read_at && !m.deleted && m.file_type !== "call") unread[m.conversation_id] = (unread[m.conversation_id] || 0) + 1;
   });
   listData = cs.map(c => ({ ...c, memberIds: mem[c.id] || [], others: (mem[c.id] || []).filter(i => i !== me.id), last: last[c.id], unread: unread[c.id] || 0 }));
+  const dl = getDel(); let dch = false;
+  listData = listData.filter(c => { const k = String(c.id); if (!dl.has(k)) return true; if (c.last) { dl.delete(k); dch = true; return true; } return false; });
+  if (dch) setDel(dl);
   listData.sort((a, b) => (b.last ? +new Date(b.last.created_at) : 0) - (a.last ? +new Date(a.last.created_at) : 0));
   renderList();
 }
@@ -660,7 +705,13 @@ function renderList(err) {
       pv.textContent = p;
     } else pv.textContent = c.kind === "group" ? "Group code · " + c.code : "Naya chat — hello bolo 👋";
     if (c.unread) { const nb = document.createElement("span"); nb.className = "nb"; nb.textContent = c.unread > 99 ? "99+" : c.unread; t2.appendChild(nb); }
-    r.append(av(peer || { name: c.title }, 50, true), mid); r.onclick = () => openChat(c); g.appendChild(r);
+    r.append(av(peer || { name: c.title }, 50, true), mid);
+    const delMenu = () => menu([mbtn("🗑 Chat delete karo", () => deleteChat(c), true), cancelBtn()]);
+    let lp = null; const stopLp = () => { clearTimeout(lp); lp = null; };
+    r.addEventListener("touchstart", () => { stopLp(); lp = setTimeout(() => { r._lp = 1; delMenu(); }, 550); }, { passive: true });
+    ["touchend", "touchmove", "touchcancel"].forEach(ev => r.addEventListener(ev, stopLp, { passive: true }));
+    r.addEventListener("contextmenu", e => { e.preventDefault(); if (!r._lp) delMenu(); });
+    r.onclick = () => { if (r._lp) { r._lp = 0; return; } openChat(c); }; g.appendChild(r);
   });
   box.appendChild(g);
 }
@@ -933,13 +984,23 @@ function showInfo() {
   $("isheet").classList.add("on");
 }
 $("mn").onclick = () => {
-  const n = [mbtn("ℹ️ Info dekho", showInfo), mbtn("🧹 Chat saaf karo (mere liye)", clearChat, true), mbtn("🚩 Report karo", reportChat, true)];
+  const n = [mbtn("ℹ️ Info dekho", showInfo), mbtn("🧹 Chat saaf karo (mere liye)", clearChat, true), mbtn("🗑 Chat delete karo (poori)", () => deleteChat(cur), true), mbtn("🚩 Report karo", reportChat, true)];
   if (cur.kind === "dm") n.push(mbtn("🚫 Block karo", blockUser, true)); n.push(cancelBtn()); menu(n);
 };
 async function clearChat() {
   if (!confirm("Is chat ke saare messages aapke phone se hat jayenge. Pakka?")) return;
   const { error } = await sb.rpc("clear_chat", { cid: String(cur.id) }); if (error) return toast(error.message);
   store.forEach((m, id) => hidden.add(String(id))); store = new Map(); els = {}; seen = new Set(); $("msgs").innerHTML = ""; lastDay = null; toast("Chat saaf ho gayi ✓");
+}
+function delKey() { return "mahfil_delchats_" + (me ? me.id : ""); }
+function getDel() { try { return new Set(JSON.parse(localStorage.getItem(delKey()) || "[]")); } catch (e) { return new Set(); } }
+function setDel(s) { try { localStorage.setItem(delKey(), JSON.stringify([...s])); } catch (e) {} }
+async function deleteChat(c) {
+  if (!c || !confirm("Ye poori chat list se hat jayegi aur uske saare messages aapke phone se delete ho jayenge. Pakka?")) return;
+  const { error } = await sb.rpc("clear_chat", { cid: String(c.id) }); if (error) return toast(error.message);
+  const d = getDel(); d.add(String(c.id)); setDel(d);
+  if (cur && String(cur.id) === String(c.id)) { leaveTyping(); cur = null; store = new Map(); els = {}; seen = new Set(); $("msgs").innerHTML = ""; lastDay = null; show("main"); }
+  await loadHidden(); await loadList(); toast("Chat delete ho gayi ✓");
 }
 async function reportChat() {
   const reason = prompt("Report ka karan likho (jaise spam, gandi baat, dhokha):"); if (!reason) return;
@@ -1467,6 +1528,46 @@ function renderGames() {
 }
 function playGame(x) { $("gt").textContent = x.name; const b = $("gbody"); b.innerHTML = ""; show("game"); gstop = x.start(b) || null; }
 $("gback").onclick = () => { if (gstop) gstop(); gstop = null; $("gbody").innerHTML = ""; show("main"); };
+</script>
+<script>
+/* keyboard khulne par header upar na bhage: screen ko visible area (visualViewport) ke hisaab se fit karo */
+(function(){
+  var vv = window.visualViewport, r = document.documentElement;
+  function fit(){
+    if (vv) { r.style.setProperty("--app-h", vv.height + "px"); r.style.setProperty("--vt", vv.offsetTop + "px"); }
+    if (window.scrollY || window.scrollX) window.scrollTo(0, 0);
+  }
+  if (vv) { vv.addEventListener("resize", fit); vv.addEventListener("scroll", fit); }
+  window.addEventListener("scroll", fit, { passive: true });
+  window.addEventListener("orientationchange", function(){ setTimeout(fit, 300); });
+  document.addEventListener("focusin", function(){ setTimeout(fit, 50); setTimeout(fit, 300); });
+  document.addEventListener("focusout", function(){ setTimeout(function(){ fit(); window.scrollTo(0, 0); }, 100); });
+  fit();
+})();
+</script>
+<script>
+/* ===== Bhasha (Hindi / English / Hinglish) + personal code box ===== */
+(function(){
+  var D=[["Settings ⚙️", "सेटिंग्स ⚙️", "Settings ⚙️"], ["Settings", "सेटिंग्स", "Settings"], ["Games 🎮", "गेम्स 🎮", "Games 🎮"], ["Games", "गेम्स", "Games"], ["Chats", "चैट", "Chats"], ["Status", "स्टेटस", "Status"], ["Status ⭕", "स्टेटस ⭕", "Status ⭕"], ["Status lagao ✅", "स्टेटस लगाओ ✅", "Post status ✅"], ["Chat dhundho", "चैट खोजो", "Search chats"], ["Chat shuru karo", "चैट शुरू करो", "Start chat"], ["Dost ka code", "दोस्त का कोड", "Friend's code"], ["Dost ka 5 ank ka code", "दोस्त का 5 अंकों का कोड", "Friend's 5-digit code"], ["Group join", "ग्रुप जॉइन", "Join group"], ["Naya group", "नया ग्रुप", "New group"], ["Message likho…", "संदेश लिखो…", "Write a message…"], ["Kuch likho…", "कुछ लिखो…", "Write something…"], ["Record ho raha hai…", "रिकॉर्ड हो रहा है…", "Recording…"], ["Cancel", "रद्द करो", "Cancel"], ["Band karo", "बंद करो", "Close"], ["Login", "लॉगिन", "Log in"], ["Naya account banao", "नया अकाउंट बनाओ", "Create new account"], ["Apne account mein login karo", "अपने अकाउंट में लॉगिन करो", "Log in to your account"], ["✉️ Email", "✉️ ईमेल", "✉️ Email"], ["🔑 Password (kam se kam 6 akshar)", "🔑 पासवर्ड (कम से कम 6 अक्षर)", "🔑 Password (at least 6 characters)"], ["👤 Aapka naam", "👤 आपका नाम", "👤 Your name"], ["Aapka naam", "आपका नाम", "Your name"], ["About / status", "मेरे बारे में / स्टेटस", "About / status"], ["🎂 Janm tithi (sirf umar jaanchne ke liye, save nahi hoti)", "🎂 जन्म तिथि (सिर्फ़ उम्र जाँचने के लिए, सेव नहीं होती)", "🎂 Date of birth (only to verify age, not saved)"], ["18 saal ya usse upar", "18 साल या उससे ऊपर", "18 years or older"], ["💾 Save karo", "💾 सेव करो", "💾 Save"], ["📷 Photo chuno", "📷 फ़ोटो चुनो", "📷 Choose photo"], ["24 ghante baad apne aap hat jayega. Sirf aapke contacts dekh sakte hain.", "24 घंटे बाद अपने आप हट जाएगा। सिर्फ़ आपके कॉन्टैक्ट्स देख सकते हैं।", "Disappears after 24 hours. Only your contacts can see it."], ["📹 Video call aa rahi hai…", "📹 वीडियो कॉल आ रही है…", "📹 Incoming video call…"], ["🔑 Aapka personal code", "🔑 आपका पर्सनल कोड", "🔑 Your personal code"], ["Dikhane ke liye dabao", "दिखाने के लिए दबाओ", "Tap to reveal"], ["Chhupane ke liye dabao", "छुपाने के लिए दबाओ", "Tap to hide"], ["📋 Code copy", "📋 कोड कॉपी", "📋 Copy code"], ["Copy ho gaya ✓", "कॉपी हो गया ✓", "Copied ✓"], ["📤 Share", "📤 शेयर", "📤 Share"], ["Ye code dost ko do. Wo ＋ dabake isse aapse connect ho jayega.", "ये कोड दोस्त को दो। वो ＋ दबाकर इससे आपसे जुड़ जाएगा।", "Give this code to your friend. They tap ＋ and connect with you."], ["🎨 Theme", "🎨 थीम", "🎨 Theme"], ["🌗 Auto", "🌗 ऑटो", "🌗 Auto"], ["☀️ Light", "☀️ लाइट", "☀️ Light"], ["🌙 Dark", "🌙 डार्क", "🌙 Dark"], ["App info", "ऐप की जानकारी", "App info"], ["Mahfil Chat mein kya-kya hai", "महफ़िल चैट में क्या-क्या है", "What's inside Mahfil Chat"], ["Guide — app kaise chalayein", "गाइड — ऐप कैसे चलाएँ", "Guide — how to use the app"], ["Step-by-step samjhaya hua", "एक-एक कदम समझाया हुआ", "Explained step by step"], ["Guide", "गाइड", "Guide"], ["Notification awaaz", "नोटिफ़िकेशन आवाज़", "Notification sound"], ["Naya message aane par tone bajegi", "नया संदेश आने पर टोन बजेगी", "Plays a tone on new messages"], ["Upar popup dikhao", "ऊपर पॉपअप दिखाओ", "Show popup on top"], ["Band karoge to popup nahi, par awaaz aayegi", "बंद करोगे तो पॉपअप नहीं, पर आवाज़ आएगी", "If off: no popup, but sound will play"], ["🔔 Notifications chalu karo", "🔔 नोटिफ़िकेशन चालू करो", "🔔 Enable notifications"], ["🔒 Privacy Policy & Terms", "🔒 गोपनीयता नीति और शर्तें", "🔒 Privacy Policy & Terms"], ["🚪 Logout", "🚪 लॉगआउट", "🚪 Log out"], ["Account hamesha ke liye delete karo", "अकाउंट हमेशा के लिए डिलीट करो", "Delete account permanently"], ["ℹ️ Info dekho", "ℹ️ जानकारी देखो", "ℹ️ View info"], ["🧹 Chat saaf karo (mere liye)", "🧹 चैट साफ़ करो (मेरे लिए)", "🧹 Clear chat (for me)"], ["🗑 Chat delete karo (poori)", "🗑 पूरी चैट डिलीट करो", "🗑 Delete entire chat"], ["🗑 Chat delete karo", "🗑 चैट डिलीट करो", "🗑 Delete chat"], ["🚩 Report karo", "🚩 रिपोर्ट करो", "🚩 Report"], ["🚫 Block karo", "🚫 ब्लॉक करो", "🚫 Block"], ["Aap", "आप", "You"], ["online", "ऑनलाइन", "online"], ["typing…", "टाइप कर रहा है…", "typing…"], ["Abhi koi chat nahi.\n＋ dabao aur dost ka code daalo.", "अभी कोई चैट नहीं।\n＋ दबाओ और दोस्त का कोड डालो।", "No chats yet.\nTap ＋ and enter a friend's code."], ["Koi chat nahi mili.", "कोई चैट नहीं मिली।", "No chats found."], ["Naya chat — hello bolo 👋", "नई चैट — हेलो बोलो 👋", "New chat — say hello 👋"], ["Chat delete ho gayi ✓", "चैट डिलीट हो गई ✓", "Chat deleted ✓"], ["Chat saaf ho gayi ✓", "चैट साफ़ हो गई ✓", "Chat cleared ✓"], ["Delete ho gaya", "डिलीट हो गया", "Deleted"], ["Profile update ho gayi ✅", "प्रोफ़ाइल अपडेट हो गई ✅", "Profile updated ✅"], ["Status lag gaya ✅", "स्टेटस लग गया ✅", "Status posted ✅"], ["Refresh ho gaya ✓", "रिफ़्रेश हो गया ✓", "Refreshed ✓"], ["Call khatam ho gayi", "कॉल ख़त्म हो गई", "Call ended"], ["Kisi ne call nahi uthayi", "किसी ने कॉल नहीं उठाई", "No one answered the call"], ["Naam khali nahi ho sakta", "नाम खाली नहीं हो सकता", "Name can't be empty"], ["Kuch likho ya photo chuno", "कुछ लिखो या फ़ोटो चुनो", "Write something or choose a photo"], ["File 50 MB se choti honi chahiye.", "फ़ाइल 50 MB से छोटी होनी चाहिए।", "File must be smaller than 50 MB."], ["Notification ki permission nahi mili.", "नोटिफ़िकेशन की अनुमति नहीं मिली।", "Notification permission was denied."], ["Is chat ke saare messages aapke phone se hat jayenge. Pakka?", "इस चैट के सारे संदेश आपके फ़ोन से हट जाएँगे। पक्का?", "All messages of this chat will be removed from your phone. Sure?"], ["Ye poori chat list se hat jayegi aur uske saare messages aapke phone se delete ho jayenge. Pakka?", "ये पूरी चैट लिस्ट से हट जाएगी और इसके सारे संदेश आपके फ़ोन से डिलीट हो जाएँगे। पक्का?", "This chat will be removed from the list and all its messages deleted from your phone. Sure?"], ["Ye message sabke liye delete ho jayega. Pakka?", "ये संदेश सबके लिए डिलीट हो जाएगा। पक्का?", "This message will be deleted for everyone. Sure?"], ["Is user ko block karein? Wo aapko message nahi bhej payega.", "इस यूज़र को ब्लॉक करें? वो आपको संदेश नहीं भेज पाएगा।", "Block this user? They won't be able to message you."], ["Account aur saari chats hamesha ke liye delete ho jayengi. Pakka?", "अकाउंट और सारी चैट हमेशा के लिए डिलीट हो जाएँगी। पक्का?", "Your account and all chats will be deleted forever. Sure?"]], M={hi:{},en:{}}, LANG="hi", rec=new WeakMap(), rec2=new WeakMap(), AT=["placeholder","title","aria-label"];
+  D.forEach(function(r){M.hi[r[0]]=r[1];M.en[r[0]]=r[2];});
+  try{LANG=localStorage.getItem("mc_lang")||"hi";}catch(e){}
+  function T(str){ if(LANG==="hg")return str; var k=str.trim(), v=M[LANG][k]; return v?str.replace(k,function(){return v;}):str; }
+  function skip(n){ var p=n.nodeType===3?n.parentNode:n; return !p||!p.closest||p.closest("#msgs,.t1,script,style"); }
+  function txt(n){ var r=rec.get(n), o=(r&&n.data===r.w)?r.o:n.data, w=T(o); if(w!==n.data)n.data=w; rec.set(n,{o:o,w:w}); }
+  function att(el){ var m=rec2.get(el)||{}; AT.forEach(function(a){ if(!el.hasAttribute(a))return; var c=el.getAttribute(a), r=m[a], o=(r&&c===r.w)?r.o:c, w=T(o); if(w!==c)el.setAttribute(a,w); m[a]={o:o,w:w}; }); rec2.set(el,m); }
+  function walk(n){ if(n.nodeType!==1&&n.nodeType!==3)return; if(skip(n))return; if(n.nodeType===3){txt(n);return;} att(n); for(var c=n.firstChild;c;c=c.nextSibling)walk(c); }
+  new MutationObserver(function(ms){ ms.forEach(function(m){ if(m.type==="childList")m.addedNodes.forEach(walk); else if(m.type==="characterData")walk(m.target); else if(!skip(m.target))att(m.target); }); })
+    .observe(document.body,{childList:true,subtree:true,characterData:true,attributes:true,attributeFilter:AT});
+  ["confirm","prompt","alert"].forEach(function(f){ var o=window[f].bind(window); window[f]=function(){ var a=[].slice.call(arguments); if(typeof a[0]==="string")a[0]=T(a[0]); return o.apply(null,a); }; });
+  function setLang(l){ LANG=l; try{localStorage.setItem("mc_lang",l);}catch(e){} document.documentElement.lang=l==="en"?"en":"hi";
+    document.querySelectorAll("#lseg button").forEach(function(b){b.classList.toggle("on",b.dataset.l===l);}); walk(document.body); }
+  document.querySelectorAll("#lseg button").forEach(function(b){b.onclick=function(){setLang(b.dataset.l);};});
+  setLang(LANG);
+  /* personal code: chhota box, dabane par dikhe */
+  var box=document.getElementById("codebox"), acts=document.getElementById("codeacts"), hint=document.getElementById("codehint"), t;
+  function setShow(on){ box.classList.toggle("show",on); acts.style.display=on?"block":"none"; hint.textContent=on?"Chhupane ke liye dabao":"Dikhane ke liye dabao"; clearTimeout(t); if(on)t=setTimeout(function(){setShow(false);},20000); }
+  box.onclick=function(){ setShow(!box.classList.contains("show")); };
+})();
 </script>
 </body>
 </html>
