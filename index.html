@@ -318,6 +318,7 @@ button,input{font:inherit;color:inherit}
 .codebox small{display:block;color:var(--mute);font-size:12.5px}
 .codebox .bigcode{font-size:30px;font-weight:700;letter-spacing:8px;margin:2px 0;padding-left:8px;filter:blur(9px);transition:filter .2s;user-select:none;-webkit-user-select:none}
 .codebox.show .bigcode{filter:none;user-select:text;-webkit-user-select:text}
+#offb{display:none;margin:6px 14px 0;padding:7px 10px;border-radius:10px;background:rgba(255,149,0,.16);color:#c77700;font-size:13px;text-align:center}
 </style>
 </head>
 <body>
@@ -346,6 +347,7 @@ button,input{font:inherit;color:inherit}
   <div class="pane on" id="p-chats">
     <div class="large"><h1>Mahfil 💬</h1><button class="plus" id="new">+</button></div>
     <div class="srch"><input id="q" type="search" placeholder="Chat dhundho"></div>
+    <div id="offb">📴 Internet nahi hai — purani chats dekh sakte ho</div>
     <div class="scroll" id="convs"></div>
   </div>
   <div class="pane" id="p-set">
@@ -358,7 +360,7 @@ button,input{font:inherit;color:inherit}
       <div class="group" style="max-width:420px;margin:14px auto 0;padding:12px 14px"><div style="font-weight:600;margin-bottom:8px">🎨 Theme</div>
         <div class="tseg" id="tseg" style="margin:0"><button data-t="auto">🌗 Auto</button><button data-t="light">☀️ Light</button><button data-t="dark">🌙 Dark</button></div></div>
       <div class="group" style="max-width:420px;margin:14px auto 0;padding:12px 14px"><div style="font-weight:600;margin-bottom:8px">🌐 भाषा / Language</div>
-        <div class="tseg" id="lseg" style="margin:0"><button data-l="hi">हिन्दी</button><button data-l="en">English</button><button data-l="hg">Hinglish</button></div></div>
+        <div class="tseg" id="lseg" style="margin:0"><button data-l="hi">हिन्दी</button><button data-l="en">English</button></div></div>
       <div class="group" style="max-width:420px;margin:14px auto 0">
         <button class="row" id="rinfo"><span style="font-size:22px">ℹ️</span><div><b>App info</b><small>Mahfil Chat mein kya-kya hai</small></div></button>
         <button class="row" id="rguide"><span style="font-size:22px">📖</span><div><b>Guide — app kaise chalayein</b><small>Step-by-step samjhaya hua</small></div></button>
@@ -447,10 +449,11 @@ const { SUPABASE_URL, SUPABASE_KEY, LIVEKIT_URL, VAPID_PUBLIC } = window.CONFIG 
 window.ADS_CLIENT = (window.CONFIG || {}).ADS_CLIENT || "";
 window.ADS_SLOT = (window.CONFIG || {}).ADS_SLOT || "";
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("sw.js").catch(() => {});
+  navigator.serviceWorker.register("sw-offline.js").catch(() => {});
   navigator.serviceWorker.addEventListener("message", e => { if (e.data && e.data.chat) fromNotif(e.data.chat, e.data.call); });
 }
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+let sb = null;
+try { sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY); } catch (e) { sb = null; }
 const $ = id => document.getElementById(id);
 /* ---------- Theme: Auto / Light / Dark ---------- */
 function applyTheme(t) {
@@ -464,14 +467,90 @@ function applyTheme(t) {
 document.querySelectorAll("#tseg button").forEach(b => b.onclick = () => applyTheme(b.dataset.t));
 try { applyTheme(localStorage.getItem("mc_theme")); } catch (e) { applyTheme("auto"); }
 matchMedia("(prefers-color-scheme:dark)").addEventListener("change", () => { if (!document.documentElement.dataset.theme) applyTheme("auto"); });
-if (!SUPABASE_URL || SUPABASE_URL.includes("YOUR-PROJECT")) $("am").textContent = "⚠️ config.js mein Supabase URL aur key bharo.";
+if ((!SUPABASE_URL || SUPABASE_URL.includes("YOUR-PROJECT")) && navigator.onLine) $("am").textContent = "⚠️ config.js mein Supabase URL aur key bharo.";
 const COLORS = ["#ff9500","#ff2d55","#5856d6","#34c759","#af52de","#00b4d8","#ff6b35"];
 let me, prof = {}, cur, signup = false, seen = new Set(), names = {}, mode = 0, call = null, blocked = new Set(), booted = false;
 let editing = null, store = new Map(), els = {}, lastDay = null, replyTo = null, hidden = new Set(), pcache = {}, online = new Set(), typers = {}, listData = [], tch = null, pch = null;
 
+/* ---------- Offline: chats phone mein save rehti hain, bina internet ke bhi dikhti hain ---------- */
+let offlineBoot = false, outbox = [], flushing = false, pfAt = 0, smt, spt;
+const isOff = () => offlineBoot || !sb || !navigator.onLine;
+const IDB = (() => {
+  let p = null;
+  const open = () => p || (p = new Promise((res, rej) => { try { const r = indexedDB.open("mahfil", 1); r.onupgradeneeded = () => r.result.createObjectStore("kv"); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); } catch (e) { rej(e); } }));
+  const run = (mode, fn) => open().then(db => new Promise(res => { try { const t = db.transaction("kv", mode), q = fn(t.objectStore("kv")); t.oncomplete = () => res(q && q.result); t.onerror = t.onabort = () => res(undefined); } catch (e) { res(undefined); } })).catch(() => undefined);
+  return { get: k => run("readonly", s => s.get(k)), set: (k, v) => run("readwrite", s => s.put(v, k)), clear: () => run("readwrite", s => s.clear()) };
+})();
+const cget = k => me ? IDB.get(me.id + ":" + k) : Promise.resolve(undefined);
+const cset = (k, v) => me ? IDB.set(me.id + ":" + k, v) : Promise.resolve();
+const slim = m => ({ id: m.id, conversation_id: m.conversation_id, sender: m.sender, body: m.body, file_url: m.file_url, file_type: m.file_type, file_name: m.file_name, reply_to: m.reply_to, reactions: m.reactions, deleted: m.deleted, edited: m.edited, created_at: m.created_at, delivered_at: m.delivered_at, read_at: m.read_at, pending: m.pending });
+const saveProf = () => { clearTimeout(spt); spt = setTimeout(() => cset("profiles", pcache), 800); };
+function saveMsgs() {
+  clearTimeout(smt);
+  smt = setTimeout(() => { if (!cur || !me) return; const id = cur.id, rows = [...store.values()].sort((a, b) => new Date(a.created_at) - new Date(b.created_at)).slice(-200).map(slim); cset("m_" + id, rows); }, 500);
+}
+async function pushCache(m, dropId) {
+  if (!me) return; const k = "m_" + m.conversation_id; let rows = (await cget(k)) || [];
+  rows = rows.filter(x => x.id !== dropId && x.id !== m.id); rows.push(slim(m)); await cset(k, rows.slice(-200));
+}
+async function prefetchAll() {
+  if (isOff() || !me || Date.now() - pfAt < 300000) return; pfAt = Date.now();
+  for (const c of listData.slice()) {
+    if (isOff()) break;
+    const { data, error } = await sb.from("messages").select("*").eq("conversation_id", c.id).order("created_at", { ascending: false }).limit(200);
+    if (error || !data) break;
+    await cset("m_" + c.id, data.filter(m => !hidden.has(String(m.id)) && !blocked.has(m.sender)).reverse().map(slim));
+    if (c.memberIds && c.memberIds.length) await cset("mem_" + c.id, c.memberIds);
+  }
+}
+function queueMsg(row) {
+  const m = { id: "tmp_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6), conversation_id: row.conversation_id, sender: me.id, body: row.body, reply_to: row.reply_to || null, created_at: new Date().toISOString(), pending: true };
+  outbox.push({ tmp: m.id, row }); cset("outbox", outbox);
+  if (cur && cur.id === row.conversation_id) add(m); else pushCache(m);
+  const c = listData.find(x => x.id === row.conversation_id);
+  if (c) { c.last = m; cset("list", listData.map(x => ({ ...x, last: x.last ? slim(x.last) : undefined }))); }
+  toast("Internet aate hi message chala jayega 🕓");
+}
+function cancelPending(m) {
+  outbox = outbox.filter(x => x.tmp !== m.id); cset("outbox", outbox);
+  const e = els[m.id]; if (e) e.remove(); store.delete(m.id); seen.delete(m.id); delete els[m.id]; saveMsgs();
+}
+async function flushOutbox() {
+  if (flushing || isOff() || !me || !outbox.length) return; flushing = true; let did = false;
+  try {
+    while (outbox.length && !isOff()) {
+      const it = outbox[0], row = { ...it.row }; if (String(row.reply_to || "").startsWith("tmp_")) delete row.reply_to;
+      const { data, error } = await sb.from("messages").insert(row).select().single();
+      if (error || !data) { if (error && /fetch|network|offline|timeout/i.test(error.message || "")) break; outbox.shift(); await cset("outbox", outbox); continue; }
+      outbox.shift(); await cset("outbox", outbox); did = true;
+      if (cur && cur.id === row.conversation_id && store.has(it.tmp)) { const e = els[it.tmp]; if (e) e.remove(); store.delete(it.tmp); seen.delete(it.tmp); delete els[it.tmp]; add(data); }
+      else await pushCache(data, it.tmp);
+    }
+  } finally { flushing = false; }
+  if (did) loadList();
+}
+function netUI() { const b = $("offb"); if (b) b.style.display = isOff() ? "block" : "none"; if (cur) headStatus(); }
+async function clearOffline() { try { localStorage.removeItem("mc_last_user"); } catch (e) {} await IDB.clear(); }
+async function bootOffline(lu) {
+  if (booted) return; booted = true; offlineBoot = true; me = { id: lu.id, email: lu.email };
+  prof = (await cget("prof")) || {}; Object.assign(pcache, (await cget("profiles")) || {}); pcache[me.id] = prof;
+  hidden = new Set((await cget("hidden")) || []); blocked = new Set((await cget("blocked")) || []);
+  outbox = (await cget("outbox")) || []; listData = (await cget("list")) || [];
+  $("mycode").textContent = prof.code || "-----"; drawMe(); show("main"); renderList(); renderGames(); initEmoji(); netUI();
+}
+async function goOnline() {
+  netUI();
+  if (offlineBoot && sb) {
+    try { const r = await sb.auth.getSession(); if (r.data && r.data.session) { booted = false; boot(r.data.session, true); return; } } catch (e) {}
+  }
+  flushOutbox();
+}
+window.addEventListener("online", () => setTimeout(goOnline, 600));
+window.addEventListener("offline", netUI);
+
 const show = id => document.querySelectorAll(".screen").forEach(s => s.classList.toggle("on", s.id === id));
 const col = s => COLORS[[...(s || "x")].reduce((a, c) => a + c.charCodeAt(0), 0) % COLORS.length];
-const rpc = (f, a) => sb.rpc(f, a).then(r => r);   // .then() zaroori hai, tabhi call chalti hai
+const rpc = (f, a) => { if (!sb || offlineBoot) return Promise.resolve({ data: null, error: { message: "offline" } }); return sb.rpc(f, a).then(r => r, e => ({ data: null, error: { message: String((e && e.message) || e) } })); };   // .then() zaroori hai, tabhi call chalti hai
 let tt; function toast(t) { const e = $("toast"); e.textContent = t; e.classList.add("on"); clearTimeout(tt); tt = setTimeout(() => e.classList.remove("on"), 2800); }
 
 /* ---------- Helpers: time, avatar, preview ---------- */
@@ -494,9 +573,9 @@ function av(p, size, dot) {
 }
 async function getProfiles(ids, force) {
   const need = ids.filter(i => i && (force || !pcache[i]));
-  if (!need.length) return;
+  if (!need.length || isOff()) return;
   const { data } = await sb.from("profiles").select("*").in("id", need);
-  (data || []).forEach(p => pcache[p.id] = p);
+  if (data && data.length) { data.forEach(p => pcache[p.id] = p); saveProf(); }
 }
 function preview(m) {
   if (m.deleted) return "🚫 Message delete kiya gaya";
@@ -510,6 +589,7 @@ function preview(m) {
 }
 function tick(m) {
   const s = document.createElement("span"); s.style.display = "inline-flex";
+  if (m.pending) { s.textContent = "🕓"; s.style.fontSize = "10px"; return s; }
   const dbl = !!(m.delivered_at || m.read_at);
   s.innerHTML = '<svg class="tk' + (m.read_at ? " rd" : "") + '" viewBox="0 0 18 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 6l3.4 3.4L11.5 1.8"/>' + (dbl ? '<path d="M7 8.6l.8.8L16 1.8"/>' : "") + "</svg>";
   return s;
@@ -535,6 +615,7 @@ $("sw").onclick = () => {
 $("ok").onclick = async () => {
   const email = $("em").value.trim(), password = $("pw").value, name = $("nm").value.trim();
   $("am").style.color = "#ff3b30";
+  if (!sb || !navigator.onLine) { $("am").textContent = "Internet chalu karo, pehli baar login ke liye zaroori hai."; return; }
   if (!email || password.length < 6) { $("am").textContent = "Email aur 6+ akshar ka password daalo."; return; }
   if (signup) {
     const v = $("dob").value, d = new Date(v);
@@ -553,21 +634,30 @@ $("ok").onclick = async () => {
   if (signup && !r.data.session) { $("am").style.color = "#34c759"; $("am").textContent = "Email par bheje link se confirm karo, phir login karo."; return; }
   boot(r.data.session);
 };
-$("out").onclick = async () => { await rpc("touch_last_seen"); await sb.auth.signOut(); location.reload(); };
+$("out").onclick = async () => { await rpc("touch_last_seen"); try { if (sb) await sb.auth.signOut(isOff() ? { scope: "local" } : undefined); } catch (e) {} await clearOffline(); location.reload(); };
 
-async function boot(session) {
-  if (booted) return; booted = true;
+async function boot(session, keep) {
+  if (booted) return; booted = true; offlineBoot = false;
   me = session.user;
+  try { localStorage.setItem("mc_last_user", JSON.stringify({ id: me.id, email: me.email })); } catch (e) {}
   const { data } = await sb.from("profiles").select("*").eq("id", me.id).single();
-  prof = data || {}; pcache[me.id] = prof;
+  if (data) { prof = data; cset("prof", prof); } else prof = (await cget("prof")) || prof || {};
+  pcache[me.id] = prof; outbox = (await cget("outbox")) || [];
   $("mycode").textContent = prof.code || "-----"; drawMe();
-  show("main"); initPresence(); loadHidden().then(() => loadList()); loadStatus(); listen(); pushStatus(); loadBlocks(); renderGames(); rpc("mark_delivered_all"); rpc("touch_last_seen");
+  if (!keep) show("main"); initPresence(); loadHidden().then(() => loadList()); loadStatus(); listen(); pushStatus(); loadBlocks(); renderGames(); rpc("mark_delivered_all"); rpc("touch_last_seen"); netUI(); flushOutbox();
   initEmoji();
   const q = new URLSearchParams(location.search);
   if (q.get("chat")) fromNotif(q.get("chat"), q.get("call") === "1");
   history.replaceState(null, "", location.pathname);
 }
-sb.auth.getSession().then(({ data }) => { if (data.session) boot(data.session); });
+(async () => {
+  let s = null, err = null;
+  try { if (sb) { const r = await sb.auth.getSession(); s = r.data && r.data.session; err = r.error; } } catch (e) { err = e; }
+  if (s) return boot(s);
+  let lu = null; try { lu = JSON.parse(localStorage.getItem("mc_last_user") || "null"); } catch (e) {}
+  let tok = false; try { tok = Object.keys(localStorage).some(k => /^sb-.*-auth-token/.test(k)); } catch (e) {}
+  if (lu && lu.id && (!sb || !navigator.onLine || err || tok)) bootOffline(lu);
+})();
 
 /* ---------- Online / last seen ---------- */
 function initPresence() {
@@ -649,20 +739,20 @@ $("psave").onclick = async () => {
   const { error } = await sb.rpc("update_my_profile", { pname: name, pabout: about, pavatar: url });
   $("psave").disabled = false;
   if (error) return toast("Save fail: " + error.message + " (migration.sql chalayi?)");
-  prof = { ...prof, name, about, avatar_url: url }; pcache[me.id] = prof; drawMe();
+  prof = { ...prof, name, about, avatar_url: url }; pcache[me.id] = prof; cset("prof", prof); drawMe();
   $("psheet").classList.remove("on"); toast("Profile update ho gayi ✅");
 };
 
 /* ---------- Chats list ---------- */
 let hl;
-async function loadHidden() { const { data } = await sb.from("message_hides").select("message_id"); hidden = new Set((data || []).map(x => String(x.message_id))); }
+async function loadHidden() { if (isOff()) return; const { data, error } = await sb.from("message_hides").select("message_id"); if (error) return; hidden = new Set((data || []).map(x => String(x.message_id))); cset("hidden", [...hidden]); }
 const debounceList = () => { clearTimeout(hl); hl = setTimeout(loadList, 800); };
 async function loadList() {
   if (!me) return;
-  const { data: cs, error } = await sb.rpc("my_chats");
-  if (error) { listData = []; return renderList(error.message); }
+  const { data: cs, error } = await rpc("my_chats");
+  if (error) { const old = await cget("list"); if (old && old.length) { listData = old; return renderList(); } listData = []; return renderList(isOff() ? "" : error.message); }
   const ids = (cs || []).map(c => c.id);
-  if (!ids.length) { listData = []; return renderList(); }
+  if (!ids.length) { listData = []; cset("list", []); return renderList(); }
   const [mm, ms] = await Promise.all([
     sb.from("members").select("conversation_id,user_id").in("conversation_id", ids),
     sb.from("messages").select("*").in("conversation_id", ids).order("created_at", { ascending: false }).limit(500)
@@ -680,7 +770,8 @@ async function loadList() {
   listData = listData.filter(c => { const k = String(c.id); if (!dl.has(k)) return true; if (c.last) { dl.delete(k); dch = true; return true; } return false; });
   if (dch) setDel(dl);
   listData.sort((a, b) => (b.last ? +new Date(b.last.created_at) : 0) - (a.last ? +new Date(a.last.created_at) : 0));
-  renderList();
+  cset("list", listData.map(c => ({ ...c, last: c.last ? slim(c.last) : undefined }))); cset("profiles", pcache);
+  renderList(); prefetchAll();
 }
 function renderList(err) {
   const box = $("convs"); box.innerHTML = "";
@@ -750,18 +841,26 @@ async function openChat(c) {
   leaveTyping(); stopRec(false);
   cur = c; seen = new Set(); store = new Map(); els = {}; lastDay = null; typers = {}; names = {}; setReply(null);
   $("ct").textContent = c.title; $("cs").textContent = ""; $("msgs").innerHTML = ""; $("emo").classList.remove("on"); $("hav").replaceChildren(av({ name: c.title }, 40)); show("chat");
-  const { data: mem } = await sb.from("members").select("user_id").eq("conversation_id", c.id);
-  const ids = (mem || []).map(x => x.user_id); await getProfiles(ids, true);
+  let ids = null;
+  if (!isOff()) { const { data: mem, error: me1 } = await sb.from("members").select("user_id").eq("conversation_id", c.id); if (!me1 && mem && mem.length) { ids = mem.map(x => x.user_id); cset("mem_" + c.id, ids); } }
+  if (!ids) ids = (await cget("mem_" + c.id)) || c.memberIds || [];
+  await getProfiles(ids, true);
   if (cur !== c) return;
   ids.forEach(i => names[i] = (pcache[i] || {}).name);
   c.memberIds = ids; c.others = ids.filter(i => i !== me.id);
   drawHead(); headStatus();
-  joinTyping(c);
-  const { data } = await sb.from("messages").select("*").eq("conversation_id", c.id).order("created_at", { ascending: false }).limit(200);
+  if (!isOff()) joinTyping(c);
+  const cached = (await cget("m_" + c.id)) || [];
   if (cur !== c) return;
-  const rows = (data || []).reverse();
-  if (!rows.length) { const h = document.createElement("div"); h.className = "hint"; h.id = "hint"; h.textContent = "💡 Message par lamba dabao (ya double-click) — reply, reaction aur delete ke liye"; $("msgs").appendChild(h); }
-  rows.forEach(add); const bx = $("msgs"); bx.scrollTop = bx.scrollHeight; markRead();
+  cached.forEach(add); const bx = $("msgs"); bx.scrollTop = bx.scrollHeight;
+  if (isOff()) toast("📴 Internet nahi hai — purani chat dikh rahi hai");
+  else {
+    const { data, error: e2 } = await sb.from("messages").select("*").eq("conversation_id", c.id).order("created_at", { ascending: false }).limit(200);
+    if (cur !== c) return;
+    if (!e2 && data) data.reverse().forEach(m => { const o = store.get(m.id); if (!o) add(m); else if (JSON.stringify(slim(o)) !== JSON.stringify(slim(m))) upd(m); });
+  }
+  if (!store.size) { const h = document.createElement("div"); h.className = "hint"; h.id = "hint"; h.textContent = "💡 Message par lamba dabao (ya double-click) — reply, reaction aur delete ke liye"; $("msgs").appendChild(h); }
+  bx.scrollTop = bx.scrollHeight; markRead();
 }
 function drawHead() {
   if (!cur) return;
@@ -774,7 +873,7 @@ function headStatus() {
   if (ty.length) { el.classList.add("on"); el.textContent = cur.kind === "group" ? ((names[ty[0]] || "Koi").split(" ")[0] + " typing…") : "typing…"; return; }
   if (cur.kind === "group") { const n = (cur.others || []).map(i => names[i]).filter(Boolean); el.textContent = [...n, "Aap"].join(", "); return; }
   const o = (cur.others || [])[0]; if (!o) { el.textContent = ""; return; }
-  if (online.has(o)) { el.classList.add("on"); el.textContent = "online"; }
+  if (online.has(o) && !isOff()) { el.classList.add("on"); el.textContent = "online"; }
   else { const p = pcache[o]; el.textContent = p && p.last_seen ? seenText(p.last_seen) : ""; }
 }
 $("back").onclick = () => { leaveTyping(); stopRec(false); cur = null; setReply(null); show("main"); loadList(); };
@@ -851,10 +950,11 @@ function add(m) {
   const box = $("msgs"), near = box.scrollHeight - box.scrollTop - box.clientHeight < 160 || m.sender === me.id;
   const dk = dayKey(m.created_at); if (dk !== lastDay) { lastDay = dk; const s = document.createElement("div"); s.className = "day"; s.textContent = dayLabel(m.created_at); box.appendChild(s); }
   const el = build(m); els[m.id] = el; box.appendChild(el); if (near) box.scrollTop = box.scrollHeight;
+  saveMsgs();
 }
 function upd(m) {
   if (!els[m.id] || hidden.has(String(m.id))) return; store.set(m.id, m);
-  const n = build(m); els[m.id].replaceWith(n); els[m.id] = n;
+  const n = build(m); els[m.id].replaceWith(n); els[m.id] = n; saveMsgs();
 }
 async function refresh(id) { const { data } = await sb.from("messages").select("*").eq("id", id).single(); if (data) upd(data); }
 
@@ -866,6 +966,8 @@ function reactRow(m) {
 }
 function openMsgMenu(m) {
   const n = [];
+  if (m.pending) { n.push(mbtn("🗑️ Bhejna radd karo", () => cancelPending(m), true)); n.push(cancelBtn()); return menu(n); }
+  if (isOff()) { if (m.body && !m.deleted && m.file_type !== "call") n.push(mbtn("📋 Copy", () => navigator.clipboard.writeText(m.body).then(() => toast("Copy ho gaya ✓")).catch(() => {}))); n.push(cancelBtn()); return menu(n); }
   if (!m.deleted && m.file_type !== "call") {
     n.push(reactRow(m)); n.push(mbtn("↩️ Reply", () => setReply(m)));
     if (m.body) n.push(mbtn("📋 Copy", () => navigator.clipboard.writeText(m.body).then(() => toast("Copy ho gaya ✓")).catch(() => {})));
@@ -911,8 +1013,11 @@ async function send(fields, cid) {
   cid = cid || cur.id; const row = { conversation_id: cid, ...fields };
   if (replyTo && cur && cur.id === cid && fields.file_type !== "call") row.reply_to = replyTo.id;
   setReply(null);
+  const textOnly = !!row.body && !row.file_url && !row.file_type;
+  if (isOff()) { if (textOnly) return queueMsg(row); return toast("Internet nahi hai — ye abhi nahi bhej sakte"); }
   const { data, error } = await sb.from("messages").insert(row).select().single();
-  if (error) toast("Bhejne mein dikkat: " + error.message); else if (cur && cur.id === cid) add(data);
+  if (error) { if (textOnly && /fetch|network|offline|timeout/i.test(error.message || "")) return queueMsg(row); toast("Bhejne mein dikkat: " + error.message); }
+  else if (cur && cur.id === cid) add(data);
 }
 const submitText = () => { const body = $("txt").value.trim(); if (!body) return false; if (editing) { doEdit(body); return true; } $("txt").value = ""; syncBtn(); $("emo").classList.remove("on"); send({ body }); return true; };
 $("f").onsubmit = e => { e.preventDefault(); submitText(); };
@@ -921,6 +1026,7 @@ $("txt").oninput = () => { syncBtn(); sendTyping(); };
 $("snd").onclick = () => { if (!submitText()) startRec(); };
 $("file").onchange = async e => {
   const f = e.target.files[0]; if (!f) return;
+  if (isOff()) { toast("Internet nahi hai — ye abhi nahi bhej sakte"); e.target.value = ""; return; }
   if (f.size > 50 * 1024 * 1024) { toast("File 50 MB se choti honi chahiye."); return; }
   toast("⏳ Upload ho raha hai…"); const cid = cur.id;
   const path = `${cid}/${Date.now()}_${f.name.replace(/[^\w.\-]/g, "_")}`;
@@ -935,6 +1041,7 @@ $("eb").onclick = () => $("emo").classList.toggle("on");
 
 let rec = null, rtimer;
 async function startRec() {
+  if (isOff()) return toast("Internet nahi hai — ye abhi nahi bhej sakte");
   if (!window.MediaRecorder) return toast("Is browser mein voice record nahi hota");
   let st; try { st = await navigator.mediaDevices.getUserMedia({ audio: true }); } catch (e) { return toast("Mic ki permission do (site https par honi chahiye)"); }
   const mt = ["audio/webm;codecs=opus", "audio/mp4", "audio/webm"].find(t => MediaRecorder.isTypeSupported(t));
@@ -1030,7 +1137,7 @@ function listen() {
     const m = e.new; if (m.sender === me.id || blocked.has(m.sender)) return;
     deliv();
     const here = cur && cur.id === m.conversation_id;
-    if (here) { add(m); markRead(); }
+    if (here) { add(m); markRead(); } else pushCache(m);
     let c = listData.find(x => x.id === m.conversation_id);
     if (!c) { const { data: cs } = await sb.rpc("my_chats"); c = (cs || []).find(x => x.id === m.conversation_id); if (!c) return; }
     await getProfiles([m.sender]); const who = (pcache[m.sender] || {}).name || "Dost";
@@ -1064,7 +1171,7 @@ async function syncCur() {
   markRead();
 }
 async function resync() {
-  if (!me || syncing || document.hidden) return; syncing = true;
+  if (!me || syncing || document.hidden || offlineBoot || !sb) return; syncing = true;
   try {
     if (!ich || ich.state !== "joined") listen();
     rpc("mark_delivered_all");
@@ -1077,7 +1184,7 @@ window.addEventListener("online", resync);
 window.addEventListener("pageshow", resync);
 window.addEventListener("focus", resync);
 setInterval(() => {
-  if (!me || document.hidden) return;
+  if (!me || document.hidden || offlineBoot || !sb) return;
   if (!ich || ich.state !== "joined") { listen(); return; }
   syncCur().catch(() => {});
 }, 15000);
@@ -1196,6 +1303,7 @@ $("vc").onclick = () => startCall(false);
 $("ac").onclick = () => startCall(true);
 async function startCall(audio) {
   if (call || !cur) return;
+  if (isOff()) return toast("Internet nahi hai — ye abhi nahi bhej sakte");
   await send({ file_type: "call", body: audio ? "audio" : "" });
   joinCall(audio);
 }
@@ -1314,10 +1422,10 @@ function toggle(kind) {
 $("mic").onclick = () => toggle("mic"); $("cam").onclick = () => toggle("cam");
 
 /* ---------- Blocked list / Account delete ---------- */
-async function loadBlocks() { const { data } = await sb.from("blocks").select("blocked"); blocked = new Set((data || []).map(x => x.blocked)); }
+async function loadBlocks() { if (isOff()) return; const { data, error } = await sb.from("blocks").select("blocked"); if (error) return; blocked = new Set((data || []).map(x => x.blocked)); cset("blocked", [...blocked]); }
 async function renderBlocked() {
   await loadBlocks(); const box = $("blk"); box.innerHTML = ""; if (!blocked.size) return;
-  const { data: ps } = await sb.from("profiles").select("id,name").in("id", [...blocked]);
+  const { data: ps } = isOff() ? { data: null } : await sb.from("profiles").select("id,name").in("id", [...blocked]);
   const g = document.createElement("div"); g.className = "group"; g.style.cssText = "margin-top:18px;max-width:420px;margin-left:auto;margin-right:auto";
   [...blocked].forEach(id => {
     const p = (ps || []).find(x => x.id === id), r = document.createElement("div"); r.className = "row"; r.style.cursor = "default";
@@ -1329,10 +1437,11 @@ async function renderBlocked() {
   box.appendChild(g);
 }
 $("del").onclick = async () => {
+  if (isOff()) return toast("Internet nahi hai — ye abhi nahi bhej sakte");
   if (!confirm("Account aur saari chats hamesha ke liye delete ho jayengi. Pakka?")) return;
   if (prompt("Confirm karne ke liye DELETE likho") !== "DELETE") return;
   const { error } = await sb.rpc("delete_my_account"); if (error) return toast(error.message);
-  await sb.auth.signOut(); location.reload();
+  await sb.auth.signOut(); await clearOffline(); location.reload();
 };
 
 /* ---------- Status (24 ghante) ---------- */
@@ -1340,6 +1449,7 @@ let stData = {}, stSeen = new Set(), stViews = {}, stImg = null, stImgUrl = "", 
 const BGS = ["linear-gradient(135deg,#00a884,#0a84ff)", "linear-gradient(135deg,#ff6b35,#ff2d55)", "linear-gradient(135deg,#5856d6,#af52de)", "linear-gradient(135deg,#11998e,#38ef7d)", "linear-gradient(135deg,#232526,#414345)", "linear-gradient(135deg,#f7971e,#ffd200)"];
 async function loadStatus() {
   if (!me) return;
+  if (isOff()) return renderStatus({ message: "offline" });
   const [a, b] = await Promise.all([
     sb.from("statuses").select("*").gt("expires_at", new Date().toISOString()).order("created_at"),
     sb.from("status_views").select("*")
@@ -1359,7 +1469,7 @@ function ringAv(uid, size) {
 }
 function renderStatus(err) {
   const box = $("slist"); box.innerHTML = "";
-  if (err) { const e = document.createElement("div"); e.className = "empty"; e.textContent = "Status abhi kaam nahi kar raha. migration.sql chalayi?"; box.appendChild(e); return; }
+  if (err) { const e = document.createElement("div"); e.className = "empty"; e.textContent = isOff() ? "Status dekhne ke liye internet chahiye." : "Status abhi kaam nahi kar raha. migration.sql chalayi?"; box.appendChild(e); return; }
   const mine = stData[me.id] || [], g1 = document.createElement("div"); g1.className = "group";
   const r1 = document.createElement("button"); r1.className = "chat"; const m1 = document.createElement("div"); m1.className = "mid"; m1.innerHTML = "<b></b><small></small>";
   m1.children[0].textContent = "Mera status"; m1.children[1].style.cssText = "color:var(--mute);font-size:14px";
@@ -1548,10 +1658,11 @@ $("gback").onclick = () => { if (gstop) gstop(); gstop = null; $("gbody").innerH
 <script>
 /* ===== Bhasha (Hindi / English / Hinglish) + personal code box ===== */
 (function(){
-  var D=[["Settings ⚙️", "सेटिंग्स ⚙️", "Settings ⚙️"], ["Settings", "सेटिंग्स", "Settings"], ["Games 🎮", "गेम्स 🎮", "Games 🎮"], ["Games", "गेम्स", "Games"], ["Chats", "चैट", "Chats"], ["Status", "स्टेटस", "Status"], ["Status ⭕", "स्टेटस ⭕", "Status ⭕"], ["Status lagao ✅", "स्टेटस लगाओ ✅", "Post status ✅"], ["Chat dhundho", "चैट खोजो", "Search chats"], ["Chat shuru karo", "चैट शुरू करो", "Start chat"], ["Dost ka code", "दोस्त का कोड", "Friend's code"], ["Dost ka 5 ank ka code", "दोस्त का 5 अंकों का कोड", "Friend's 5-digit code"], ["Group join", "ग्रुप जॉइन", "Join group"], ["Naya group", "नया ग्रुप", "New group"], ["Message likho…", "संदेश लिखो…", "Write a message…"], ["Kuch likho…", "कुछ लिखो…", "Write something…"], ["Record ho raha hai…", "रिकॉर्ड हो रहा है…", "Recording…"], ["Cancel", "रद्द करो", "Cancel"], ["Band karo", "बंद करो", "Close"], ["Login", "लॉगिन", "Log in"], ["Naya account banao", "नया अकाउंट बनाओ", "Create new account"], ["Apne account mein login karo", "अपने अकाउंट में लॉगिन करो", "Log in to your account"], ["✉️ Email", "✉️ ईमेल", "✉️ Email"], ["🔑 Password (kam se kam 6 akshar)", "🔑 पासवर्ड (कम से कम 6 अक्षर)", "🔑 Password (at least 6 characters)"], ["👤 Aapka naam", "👤 आपका नाम", "👤 Your name"], ["Aapka naam", "आपका नाम", "Your name"], ["About / status", "मेरे बारे में / स्टेटस", "About / status"], ["🎂 Janm tithi (sirf umar jaanchne ke liye, save nahi hoti)", "🎂 जन्म तिथि (सिर्फ़ उम्र जाँचने के लिए, सेव नहीं होती)", "🎂 Date of birth (only to verify age, not saved)"], ["18 saal ya usse upar", "18 साल या उससे ऊपर", "18 years or older"], ["💾 Save karo", "💾 सेव करो", "💾 Save"], ["📷 Photo chuno", "📷 फ़ोटो चुनो", "📷 Choose photo"], ["24 ghante baad apne aap hat jayega. Sirf aapke contacts dekh sakte hain.", "24 घंटे बाद अपने आप हट जाएगा। सिर्फ़ आपके कॉन्टैक्ट्स देख सकते हैं।", "Disappears after 24 hours. Only your contacts can see it."], ["📹 Video call aa rahi hai…", "📹 वीडियो कॉल आ रही है…", "📹 Incoming video call…"], ["🔑 Aapka personal code", "🔑 आपका पर्सनल कोड", "🔑 Your personal code"], ["Dikhane ke liye dabao", "दिखाने के लिए दबाओ", "Tap to reveal"], ["Chhupane ke liye dabao", "छुपाने के लिए दबाओ", "Tap to hide"], ["📋 Code copy", "📋 कोड कॉपी", "📋 Copy code"], ["Copy ho gaya ✓", "कॉपी हो गया ✓", "Copied ✓"], ["📤 Share", "📤 शेयर", "📤 Share"], ["Ye code dost ko do. Wo ＋ dabake isse aapse connect ho jayega.", "ये कोड दोस्त को दो। वो ＋ दबाकर इससे आपसे जुड़ जाएगा।", "Give this code to your friend. They tap ＋ and connect with you."], ["🎨 Theme", "🎨 थीम", "🎨 Theme"], ["🌗 Auto", "🌗 ऑटो", "🌗 Auto"], ["☀️ Light", "☀️ लाइट", "☀️ Light"], ["🌙 Dark", "🌙 डार्क", "🌙 Dark"], ["App info", "ऐप की जानकारी", "App info"], ["Mahfil Chat mein kya-kya hai", "महफ़िल चैट में क्या-क्या है", "What's inside Mahfil Chat"], ["Guide — app kaise chalayein", "गाइड — ऐप कैसे चलाएँ", "Guide — how to use the app"], ["Step-by-step samjhaya hua", "एक-एक कदम समझाया हुआ", "Explained step by step"], ["Guide", "गाइड", "Guide"], ["Notification awaaz", "नोटिफ़िकेशन आवाज़", "Notification sound"], ["Naya message aane par tone bajegi", "नया संदेश आने पर टोन बजेगी", "Plays a tone on new messages"], ["Upar popup dikhao", "ऊपर पॉपअप दिखाओ", "Show popup on top"], ["Band karoge to popup nahi, par awaaz aayegi", "बंद करोगे तो पॉपअप नहीं, पर आवाज़ आएगी", "If off: no popup, but sound will play"], ["🔔 Notifications chalu karo", "🔔 नोटिफ़िकेशन चालू करो", "🔔 Enable notifications"], ["🔒 Privacy Policy & Terms", "🔒 गोपनीयता नीति और शर्तें", "🔒 Privacy Policy & Terms"], ["🚪 Logout", "🚪 लॉगआउट", "🚪 Log out"], ["Account hamesha ke liye delete karo", "अकाउंट हमेशा के लिए डिलीट करो", "Delete account permanently"], ["ℹ️ Info dekho", "ℹ️ जानकारी देखो", "ℹ️ View info"], ["🧹 Chat saaf karo (mere liye)", "🧹 चैट साफ़ करो (मेरे लिए)", "🧹 Clear chat (for me)"], ["🗑 Chat delete karo (poori)", "🗑 पूरी चैट डिलीट करो", "🗑 Delete entire chat"], ["🗑 Chat delete karo", "🗑 चैट डिलीट करो", "🗑 Delete chat"], ["🚩 Report karo", "🚩 रिपोर्ट करो", "🚩 Report"], ["🚫 Block karo", "🚫 ब्लॉक करो", "🚫 Block"], ["Aap", "आप", "You"], ["online", "ऑनलाइन", "online"], ["typing…", "टाइप कर रहा है…", "typing…"], ["Abhi koi chat nahi.\n＋ dabao aur dost ka code daalo.", "अभी कोई चैट नहीं।\n＋ दबाओ और दोस्त का कोड डालो।", "No chats yet.\nTap ＋ and enter a friend's code."], ["Koi chat nahi mili.", "कोई चैट नहीं मिली।", "No chats found."], ["Naya chat — hello bolo 👋", "नई चैट — हेलो बोलो 👋", "New chat — say hello 👋"], ["Chat delete ho gayi ✓", "चैट डिलीट हो गई ✓", "Chat deleted ✓"], ["Chat saaf ho gayi ✓", "चैट साफ़ हो गई ✓", "Chat cleared ✓"], ["Delete ho gaya", "डिलीट हो गया", "Deleted"], ["Profile update ho gayi ✅", "प्रोफ़ाइल अपडेट हो गई ✅", "Profile updated ✅"], ["Status lag gaya ✅", "स्टेटस लग गया ✅", "Status posted ✅"], ["Refresh ho gaya ✓", "रिफ़्रेश हो गया ✓", "Refreshed ✓"], ["Call khatam ho gayi", "कॉल ख़त्म हो गई", "Call ended"], ["Kisi ne call nahi uthayi", "किसी ने कॉल नहीं उठाई", "No one answered the call"], ["Naam khali nahi ho sakta", "नाम खाली नहीं हो सकता", "Name can't be empty"], ["Kuch likho ya photo chuno", "कुछ लिखो या फ़ोटो चुनो", "Write something or choose a photo"], ["File 50 MB se choti honi chahiye.", "फ़ाइल 50 MB से छोटी होनी चाहिए।", "File must be smaller than 50 MB."], ["Notification ki permission nahi mili.", "नोटिफ़िकेशन की अनुमति नहीं मिली।", "Notification permission was denied."], ["Is chat ke saare messages aapke phone se hat jayenge. Pakka?", "इस चैट के सारे संदेश आपके फ़ोन से हट जाएँगे। पक्का?", "All messages of this chat will be removed from your phone. Sure?"], ["Ye poori chat list se hat jayegi aur uske saare messages aapke phone se delete ho jayenge. Pakka?", "ये पूरी चैट लिस्ट से हट जाएगी और इसके सारे संदेश आपके फ़ोन से डिलीट हो जाएँगे। पक्का?", "This chat will be removed from the list and all its messages deleted from your phone. Sure?"], ["Ye message sabke liye delete ho jayega. Pakka?", "ये संदेश सबके लिए डिलीट हो जाएगा। पक्का?", "This message will be deleted for everyone. Sure?"], ["Is user ko block karein? Wo aapko message nahi bhej payega.", "इस यूज़र को ब्लॉक करें? वो आपको संदेश नहीं भेज पाएगा।", "Block this user? They won't be able to message you."], ["Account aur saari chats hamesha ke liye delete ho jayengi. Pakka?", "अकाउंट और सारी चैट हमेशा के लिए डिलीट हो जाएँगी। पक्का?", "Your account and all chats will be deleted forever. Sure?"]], M={hi:{},en:{}}, LANG="hi", rec=new WeakMap(), rec2=new WeakMap(), AT=["placeholder","title","aria-label"];
+  var D=[["📴 Internet nahi hai — purani chats dekh sakte ho", "📴 इंटरनेट नहीं है — पुरानी चैट देख सकते हो", "📴 You're offline — you can view your old chats"], ["📴 Internet nahi hai — purani chat dikh rahi hai", "📴 इंटरनेट नहीं है — पुरानी चैट दिख रही है", "📴 You're offline — showing the saved chat"], ["Internet nahi hai — ye abhi nahi bhej sakte", "इंटरनेट नहीं है — ये अभी नहीं भेज सकते", "You're offline — can't do this right now"], ["Internet aate hi message chala jayega 🕓", "इंटरनेट आते ही संदेश चला जाएगा 🕓", "Message will be sent when you're back online 🕓"], ["Status dekhne ke liye internet chahiye.", "स्टेटस देखने के लिए इंटरनेट चाहिए।", "Internet is needed to see statuses."], ["🗑️ Bhejna radd karo", "🗑️ भेजना रद्द करो", "🗑️ Cancel sending"], ["Internet chalu karo, pehli baar login ke liye zaroori hai.", "इंटरनेट चालू करो, लॉगिन के लिए ज़रूरी है।", "Turn on internet — needed to log in."], ["Settings ⚙️", "सेटिंग्स ⚙️", "Settings ⚙️"], ["Settings", "सेटिंग्स", "Settings"], ["Games 🎮", "गेम्स 🎮", "Games 🎮"], ["Games", "गेम्स", "Games"], ["Chats", "चैट", "Chats"], ["Status", "स्टेटस", "Status"], ["Status ⭕", "स्टेटस ⭕", "Status ⭕"], ["Status lagao ✅", "स्टेटस लगाओ ✅", "Post status ✅"], ["Chat dhundho", "चैट खोजो", "Search chats"], ["Chat shuru karo", "चैट शुरू करो", "Start chat"], ["Dost ka code", "दोस्त का कोड", "Friend's code"], ["Dost ka 5 ank ka code", "दोस्त का 5 अंकों का कोड", "Friend's 5-digit code"], ["Group join", "ग्रुप जॉइन", "Join group"], ["Naya group", "नया ग्रुप", "New group"], ["Message likho…", "संदेश लिखो…", "Write a message…"], ["Kuch likho…", "कुछ लिखो…", "Write something…"], ["Record ho raha hai…", "रिकॉर्ड हो रहा है…", "Recording…"], ["Cancel", "रद्द करो", "Cancel"], ["Band karo", "बंद करो", "Close"], ["Login", "लॉगिन", "Log in"], ["Naya account banao", "नया अकाउंट बनाओ", "Create new account"], ["Apne account mein login karo", "अपने अकाउंट में लॉगिन करो", "Log in to your account"], ["✉️ Email", "✉️ ईमेल", "✉️ Email"], ["🔑 Password (kam se kam 6 akshar)", "🔑 पासवर्ड (कम से कम 6 अक्षर)", "🔑 Password (at least 6 characters)"], ["👤 Aapka naam", "👤 आपका नाम", "👤 Your name"], ["Aapka naam", "आपका नाम", "Your name"], ["About / status", "मेरे बारे में / स्टेटस", "About / status"], ["🎂 Janm tithi (sirf umar jaanchne ke liye, save nahi hoti)", "🎂 जन्म तिथि (सिर्फ़ उम्र जाँचने के लिए, सेव नहीं होती)", "🎂 Date of birth (only to verify age, not saved)"], ["18 saal ya usse upar", "18 साल या उससे ऊपर", "18 years or older"], ["💾 Save karo", "💾 सेव करो", "💾 Save"], ["📷 Photo chuno", "📷 फ़ोटो चुनो", "📷 Choose photo"], ["24 ghante baad apne aap hat jayega. Sirf aapke contacts dekh sakte hain.", "24 घंटे बाद अपने आप हट जाएगा। सिर्फ़ आपके कॉन्टैक्ट्स देख सकते हैं।", "Disappears after 24 hours. Only your contacts can see it."], ["📹 Video call aa rahi hai…", "📹 वीडियो कॉल आ रही है…", "📹 Incoming video call…"], ["🔑 Aapka personal code", "🔑 आपका पर्सनल कोड", "🔑 Your personal code"], ["Dikhane ke liye dabao", "दिखाने के लिए दबाओ", "Tap to reveal"], ["Chhupane ke liye dabao", "छुपाने के लिए दबाओ", "Tap to hide"], ["📋 Code copy", "📋 कोड कॉपी", "📋 Copy code"], ["Copy ho gaya ✓", "कॉपी हो गया ✓", "Copied ✓"], ["📤 Share", "📤 शेयर", "📤 Share"], ["Ye code dost ko do. Wo ＋ dabake isse aapse connect ho jayega.", "ये कोड दोस्त को दो। वो ＋ दबाकर इससे आपसे जुड़ जाएगा।", "Give this code to your friend. They tap ＋ and connect with you."], ["🎨 Theme", "🎨 थीम", "🎨 Theme"], ["🌗 Auto", "🌗 ऑटो", "🌗 Auto"], ["☀️ Light", "☀️ लाइट", "☀️ Light"], ["🌙 Dark", "🌙 डार्क", "🌙 Dark"], ["App info", "ऐप की जानकारी", "App info"], ["Mahfil Chat mein kya-kya hai", "महफ़िल चैट में क्या-क्या है", "What's inside Mahfil Chat"], ["Guide — app kaise chalayein", "गाइड — ऐप कैसे चलाएँ", "Guide — how to use the app"], ["Step-by-step samjhaya hua", "एक-एक कदम समझाया हुआ", "Explained step by step"], ["Guide", "गाइड", "Guide"], ["Notification awaaz", "नोटिफ़िकेशन आवाज़", "Notification sound"], ["Naya message aane par tone bajegi", "नया संदेश आने पर टोन बजेगी", "Plays a tone on new messages"], ["Upar popup dikhao", "ऊपर पॉपअप दिखाओ", "Show popup on top"], ["Band karoge to popup nahi, par awaaz aayegi", "बंद करोगे तो पॉपअप नहीं, पर आवाज़ आएगी", "If off: no popup, but sound will play"], ["🔔 Notifications chalu karo", "🔔 नोटिफ़िकेशन चालू करो", "🔔 Enable notifications"], ["🔒 Privacy Policy & Terms", "🔒 गोपनीयता नीति और शर्तें", "🔒 Privacy Policy & Terms"], ["🚪 Logout", "🚪 लॉगआउट", "🚪 Log out"], ["Account hamesha ke liye delete karo", "अकाउंट हमेशा के लिए डिलीट करो", "Delete account permanently"], ["ℹ️ Info dekho", "ℹ️ जानकारी देखो", "ℹ️ View info"], ["🧹 Chat saaf karo (mere liye)", "🧹 चैट साफ़ करो (मेरे लिए)", "🧹 Clear chat (for me)"], ["🗑 Chat delete karo (poori)", "🗑 पूरी चैट डिलीट करो", "🗑 Delete entire chat"], ["🗑 Chat delete karo", "🗑 चैट डिलीट करो", "🗑 Delete chat"], ["🚩 Report karo", "🚩 रिपोर्ट करो", "🚩 Report"], ["🚫 Block karo", "🚫 ब्लॉक करो", "🚫 Block"], ["Aap", "आप", "You"], ["online", "ऑनलाइन", "online"], ["typing…", "टाइप कर रहा है…", "typing…"], ["Abhi koi chat nahi.\n＋ dabao aur dost ka code daalo.", "अभी कोई चैट नहीं।\n＋ दबाओ और दोस्त का कोड डालो।", "No chats yet.\nTap ＋ and enter a friend's code."], ["Koi chat nahi mili.", "कोई चैट नहीं मिली।", "No chats found."], ["Naya chat — hello bolo 👋", "नई चैट — हेलो बोलो 👋", "New chat — say hello 👋"], ["Chat delete ho gayi ✓", "चैट डिलीट हो गई ✓", "Chat deleted ✓"], ["Chat saaf ho gayi ✓", "चैट साफ़ हो गई ✓", "Chat cleared ✓"], ["Delete ho gaya", "डिलीट हो गया", "Deleted"], ["Profile update ho gayi ✅", "प्रोफ़ाइल अपडेट हो गई ✅", "Profile updated ✅"], ["Status lag gaya ✅", "स्टेटस लग गया ✅", "Status posted ✅"], ["Refresh ho gaya ✓", "रिफ़्रेश हो गया ✓", "Refreshed ✓"], ["Call khatam ho gayi", "कॉल ख़त्म हो गई", "Call ended"], ["Kisi ne call nahi uthayi", "किसी ने कॉल नहीं उठाई", "No one answered the call"], ["Naam khali nahi ho sakta", "नाम खाली नहीं हो सकता", "Name can't be empty"], ["Kuch likho ya photo chuno", "कुछ लिखो या फ़ोटो चुनो", "Write something or choose a photo"], ["File 50 MB se choti honi chahiye.", "फ़ाइल 50 MB से छोटी होनी चाहिए।", "File must be smaller than 50 MB."], ["Notification ki permission nahi mili.", "नोटिफ़िकेशन की अनुमति नहीं मिली।", "Notification permission was denied."], ["Is chat ke saare messages aapke phone se hat jayenge. Pakka?", "इस चैट के सारे संदेश आपके फ़ोन से हट जाएँगे। पक्का?", "All messages of this chat will be removed from your phone. Sure?"], ["Ye poori chat list se hat jayegi aur uske saare messages aapke phone se delete ho jayenge. Pakka?", "ये पूरी चैट लिस्ट से हट जाएगी और इसके सारे संदेश आपके फ़ोन से डिलीट हो जाएँगे। पक्का?", "This chat will be removed from the list and all its messages deleted from your phone. Sure?"], ["Ye message sabke liye delete ho jayega. Pakka?", "ये संदेश सबके लिए डिलीट हो जाएगा। पक्का?", "This message will be deleted for everyone. Sure?"], ["Is user ko block karein? Wo aapko message nahi bhej payega.", "इस यूज़र को ब्लॉक करें? वो आपको संदेश नहीं भेज पाएगा।", "Block this user? They won't be able to message you."], ["Account aur saari chats hamesha ke liye delete ho jayengi. Pakka?", "अकाउंट और सारी चैट हमेशा के लिए डिलीट हो जाएँगी। पक्का?", "Your account and all chats will be deleted forever. Sure?"]], M={hi:{},en:{}}, LANG="hi", rec=new WeakMap(), rec2=new WeakMap(), AT=["placeholder","title","aria-label"];
   D.forEach(function(r){M.hi[r[0]]=r[1];M.en[r[0]]=r[2];});
   try{LANG=localStorage.getItem("mc_lang")||"hi";}catch(e){}
-  function T(str){ if(LANG==="hg")return str; var k=str.trim(), v=M[LANG][k]; return v?str.replace(k,function(){return v;}):str; }
+  if(LANG!=="hi"&&LANG!=="en")LANG="hi";
+  function T(str){ var k=str.trim(), v=M[LANG][k]; return v?str.replace(k,function(){return v;}):str; }
   function skip(n){ var p=n.nodeType===3?n.parentNode:n; return !p||!p.closest||p.closest("#msgs,.t1,script,style"); }
   function txt(n){ var r=rec.get(n), o=(r&&n.data===r.w)?r.o:n.data, w=T(o); if(w!==n.data)n.data=w; rec.set(n,{o:o,w:w}); }
   function att(el){ var m=rec2.get(el)||{}; AT.forEach(function(a){ if(!el.hasAttribute(a))return; var c=el.getAttribute(a), r=m[a], o=(r&&c===r.w)?r.o:c, w=T(o); if(w!==c)el.setAttribute(a,w); m[a]={o:o,w:w}; }); rec2.set(el,m); }
