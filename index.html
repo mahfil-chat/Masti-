@@ -257,6 +257,27 @@ button,input{font:inherit;color:inherit}
 #ptr{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 64px);width:38px;height:38px;margin-left:-19px;border-radius:50%;background:var(--card);color:var(--blue);box-shadow:0 2px 10px rgba(0,0,0,.25);display:grid;place-items:center;font-size:20px;z-index:60;opacity:0;pointer-events:none;transform:translateY(-50px)}
 #ptr.spin span{display:block;animation:ptrspin .7s linear infinite}
 @keyframes ptrspin{to{transform:rotate(360deg)}}
+/* call: WhatsApp style */
+#call #grid{position:absolute;inset:0;flex:none}
+#call .ctl{position:absolute;left:0;right:0;bottom:0;z-index:5;padding-top:40px;background:linear-gradient(transparent,rgba(0,0,0,.6))}
+#call .ctl button{background:rgba(70,70,72,.8);backdrop-filter:blur(6px)}
+#call .ctl .end{background:#ff3b30;transform:rotate(135deg)}
+#call .ctl .off{background:#fff;color:#000}
+#grid[data-n="1"]{padding:0;gap:0;grid-template-columns:1fr}
+#grid[data-n="1"] .tile:not(#t-me){border-radius:0}
+#t-me.tile{position:absolute;right:12px;top:calc(env(safe-area-inset-top,0px) + 64px);width:104px;height:150px;z-index:3;border-radius:14px;border:2px solid rgba(255,255,255,.85);box-shadow:0 4px 14px rgba(0,0,0,.5)}
+#t-me.tile i{display:none}
+#t-me video{transform:scaleX(-1)}
+#grid[data-n="0"] #t-me.tile{inset:0;width:auto;height:auto;border:0;border-radius:0;box-shadow:none}
+#ctop{position:absolute;left:0;right:0;top:calc(env(safe-area-inset-top,0px) + 12px);text-align:center;z-index:5;pointer-events:none;text-shadow:0 1px 6px rgba(0,0,0,.7)}
+#ctop b{display:block;font-size:19px}#ctop small{font-size:14px;opacity:.9}
+#cav{display:none}
+#call.audio #cav{display:flex;position:absolute;inset:0;align-items:center;justify-content:center;background:linear-gradient(#0b3d33,#08141a);z-index:1}
+#call.audio .tile{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+/* settings switch */
+.sw{margin-left:auto;width:46px;height:28px;border-radius:14px;background:var(--line);position:relative;flex:none;transition:background .2s}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.35);transition:left .2s}
+.sw.on{background:var(--blue2)}.sw.on::after{left:21px}
 </style>
 </head>
 <body>
@@ -300,6 +321,10 @@ button,input{font:inherit;color:inherit}
         <button class="row" id="rinfo"><span style="font-size:22px">ℹ️</span><div><b>App info</b><small>Mahfil Chat mein kya-kya hai</small></div></button>
         <button class="row" id="rguide"><span style="font-size:22px">📖</span><div><b>Guide — app kaise chalayein</b><small>Step-by-step samjhaya hua</small></div></button>
       </div>
+      <div class="group" style="max-width:420px;margin:14px auto 0">
+        <button class="row" id="tsnd"><span style="font-size:22px">🔊</span><div style="flex:1"><b>Notification awaaz</b><small>Naya message aane par tone bajegi</small></div><span class="sw" id="sndsw"></span></button>
+        <button class="row" id="tpop"><span style="font-size:22px">💬</span><div style="flex:1"><b>Upar popup dikhao</b><small>Band karoge to popup nahi, par awaaz aayegi</small></div><span class="sw" id="popsw"></span></button>
+      </div>
       <button class="main sec" id="pn" style="max-width:420px;margin-top:10px">🔔 Notifications chalu karo</button>
       <div id="blk"></div>
       <div class="group" style="margin-top:18px;max-width:420px;margin-left:auto;margin-right:auto"><a class="row" href="privacy.html" target="_blank" style="color:var(--blue);text-decoration:none">🔒 Privacy Policy &amp; Terms</a></div>
@@ -315,7 +340,7 @@ button,input{font:inherit;color:inherit}
 <section class="screen" id="chat">
   <div class="bar glass"><button class="link" id="back">‹</button>
     <div id="hd"><div id="hav"></div><div class="mid"><h2 id="ct"></h2><small id="cs"></small></div></div>
-    <button class="ib" id="vc">📹</button><button class="ib" id="mn">⋮</button></div>
+    <button class="ib" id="ac">📞</button><button class="ib" id="vc">📹</button><button class="ib" id="mn">⋮</button></div>
   <div id="msgs"></div>
   <div id="rb2"><div class="qt" id="rq"></div><button class="ib" id="rx2">✕</button></div>
   <div id="emo"></div>
@@ -331,7 +356,8 @@ button,input{font:inherit;color:inherit}
   <div id="gbody" style="flex:1;overflow:auto;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;gap:16px"></div>
 </section>
 
-<section id="call"><div id="grid"></div>
+<section id="call"><div id="cav"></div><div id="grid"></div>
+  <div id="ctop"><b id="cname"></b><small id="cst"></small></div>
   <div class="ctl"><button id="mic">🎤</button><button id="cam">📷</button><button class="end" id="end">📞</button></div>
 </section>
 
@@ -364,7 +390,7 @@ button,input{font:inherit;color:inherit}
 </div></div>
 <div id="gsheet" class="ov"><div class="panel gd" id="gp"></div></div>
 <div id="vsheet" class="ov" style="z-index:30"><div class="panel" id="vp"></div></div>
-<section id="ring"><div><div class="av" id="ra"></div><h2 id="rn"></h2><p>📹 Video call aa rahi hai…</p></div>
+<section id="ring"><div><div class="av" id="ra"></div><h2 id="rn"></h2><p id="rtxt">📹 Video call aa rahi hai…</p></div>
   <div class="rb"><button class="no" id="rno">✕</button><button class="yes" id="ryes">📹</button></div></section>
 <div id="lb"><button id="lbx">✕</button><img alt=""></div>
 <div id="toast"></div>
@@ -433,7 +459,7 @@ async function getProfiles(ids, force) {
 function preview(m) {
   if (m.deleted) return "🚫 Message delete kiya gaya";
   const t = m.file_type || "";
-  if (t === "call") return "📹 Video call";
+  if (t === "call") return m.body === "audio" ? "📞 Voice call" : "📹 Video call";
   if (t.startsWith("image/")) return "📷 Photo" + (m.body ? " · " + m.body : "");
   if (t.startsWith("video/")) return "🎥 Video";
   if (t.startsWith("audio/")) return "🎤 Voice message";
@@ -727,8 +753,8 @@ function build(m) {
   const box = $("msgs");
   if (m.deleted) { const t = document.createElement("div"); t.className = "dtxt"; t.textContent = "🚫 Ye message delete kiya gaya"; el.appendChild(t); }
   else if (m.file_type === "call") {
-    const t = document.createElement("div"); t.textContent = "📹 Video call shuru hui"; el.appendChild(t);
-    const j = document.createElement("button"); j.className = "jn"; j.textContent = "Join karo"; j.onclick = joinCall; el.appendChild(j);
+    const t = document.createElement("div"); const au = m.body === "audio"; t.textContent = au ? "📞 Voice call shuru hui" : "📹 Video call shuru hui"; el.appendChild(t);
+    const j = document.createElement("button"); j.className = "jn"; j.textContent = "Join karo"; j.onclick = () => joinCall(au); el.appendChild(j);
   } else {
     if (m.file_url) {
       const ty = m.file_type || "";
@@ -947,8 +973,11 @@ function listen() {
     let c = listData.find(x => x.id === m.conversation_id);
     if (!c) { const { data: cs } = await sb.rpc("my_chats"); c = (cs || []).find(x => x.id === m.conversation_id); if (!c) return; }
     await getProfiles([m.sender]); const who = (pcache[m.sender] || {}).name || "Dost";
-    if (m.file_type === "call") { if (Date.now() - new Date(m.created_at) < 60000) ring(c, who); }
-    else if (!here) banner((c.kind === "group" ? c.title + " · " : "") + who + ": " + preview(m), () => openChat(c));
+    if (m.file_type === "call") { if (Date.now() - new Date(m.created_at) < 60000) ring(c, who, m.body === "audio"); }
+    else {
+      if (!here && cfg.pop) banner((c.kind === "group" ? c.title + " · " : "") + who + ": " + preview(m), () => openChat(c));
+      tone(here && !document.hidden);
+    }
     if (document.hidden && m.file_type !== "call") sysNotify(c, who, m);
     if (!here) debounceList();
   })
@@ -999,7 +1028,7 @@ async function sysNotify(c, who, m) {
     const reg = await navigator.serviceWorker.ready;
     await reg.showNotification((c.kind === "group" ? c.title + " · " : "") + who, {
       body: preview(m), tag: "chat-" + c.id, renotify: true,
-      icon: "icon-192.png", data: { chat: c.id }
+      icon: "icon-192.png", data: { chat: c.id }, silent: !cfg.snd, vibrate: [200, 100, 200]
     });
   } catch (e) {}
 }
@@ -1038,16 +1067,47 @@ function beep() {
   try { rctx = rctx || new AudioContext(); const o = rctx.createOscillator(), g = rctx.createGain(); o.frequency.value = 880; g.gain.value = .15; o.connect(g); g.connect(rctx.destination); o.start(); o.stop(rctx.currentTime + .35); } catch (e) {}
   if (navigator.vibrate) navigator.vibrate([300, 150, 300]);
 }
-function ring(c, who) {
+
+/* ---------- Message tone (WhatsApp jaisi) + notification settings ---------- */
+const cfg = { snd: true, pop: true };
+try { cfg.snd = localStorage.getItem("mc_snd") !== "0"; cfg.pop = localStorage.getItem("mc_pop") !== "0"; } catch (e) {}
+function unlockAudio() { try { rctx = rctx || new (window.AudioContext || window.webkitAudioContext)(); if (rctx.state === "suspended") rctx.resume(); } catch (e) {} }
+["touchstart", "pointerdown", "click", "keydown"].forEach(ev => document.addEventListener(ev, unlockAudio, { passive: true }));
+function note(f, t0, dur, vol) {
+  const o = rctx.createOscillator(), g = rctx.createGain(); o.type = "sine"; o.frequency.setValueAtTime(f, t0);
+  g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(vol, t0 + .015); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  o.connect(g); g.connect(rctx.destination); o.start(t0); o.stop(t0 + dur + .03);
+}
+let lastTone = 0;
+function tone(soft, force) {
+  if (!cfg.snd && !force) return;
+  if (Date.now() - lastTone < 700) return; lastTone = Date.now();
+  unlockAudio(); if (!rctx) return;
+  try {
+    const t = rctx.currentTime + .02;
+    if (soft) note(1175, t, .14, .12);                        // chat khula hai: halka pop
+    else { note(1046, t, .2, .3); note(1568, t + .13, .36, .3); } // do-surr wali chime
+  } catch (e) {}
+  if (!soft && navigator.vibrate) try { navigator.vibrate([120, 60, 120]); } catch (e) {}
+}
+function saveCfg() {
+  try { localStorage.setItem("mc_snd", cfg.snd ? "1" : "0"); localStorage.setItem("mc_pop", cfg.pop ? "1" : "0"); } catch (e) {}
+  $("sndsw").classList.toggle("on", cfg.snd); $("popsw").classList.toggle("on", cfg.pop);
+}
+$("tsnd").onclick = () => { cfg.snd = !cfg.snd; saveCfg(); if (cfg.snd) { lastTone = 0; tone(false); } };
+$("tpop").onclick = () => { cfg.pop = !cfg.pop; saveCfg(); if (cfg.pop) banner("Aisa popup dikhega 👋", null); };
+saveCfg();
+function ring(c, who, audio) {
   if (call || $("ring").classList.contains("on")) return;
-  who = who || c.title; $("rn").textContent = who; const a = $("ra"); a.replaceChildren();
+  who = who || c.title; $("rn").textContent = who; ring.audio = audio === true;
+  $("rtxt").textContent = ring.audio ? "📞 Voice call aa rahi hai…" : "📹 Video call aa rahi hai…"; $("ryes").textContent = ring.audio ? "📞" : "📹"; const a = $("ra"); a.replaceChildren();
   const peer = c.kind === "dm" ? pcache[(c.others || [])[0]] : null;
   if (peer && peer.avatar_url) { const i = document.createElement("img"); i.src = peer.avatar_url; a.style.background = "none"; a.appendChild(i); } else { a.style.background = col(who); a.textContent = who.slice(0, 1).toUpperCase(); }
   $("ring").classList.add("on"); beep(); rt = setInterval(beep, 2000); ring.c = c; ring.to = setTimeout(stopRing, 30000);
 }
 function stopRing() { clearInterval(rt); clearTimeout(ring.to); $("ring").classList.remove("on"); }
 $("rno").onclick = stopRing;
-$("ryes").onclick = async () => { const c = ring.c; stopRing(); await openChat(c); joinCall(); };
+$("ryes").onclick = async () => { const c = ring.c, a = ring.audio; stopRing(); await openChat(c); joinCall(a); };
 async function fromNotif(id, isCall) {
   const { data: cs } = await sb.rpc("my_chats"), c = (cs || []).find(x => x.id === id); if (!c) return;
   await openChat(c); if (isCall) ring(c, c.title);
@@ -1071,38 +1131,72 @@ $("pn").onclick = async () => {
 
 /* ---------- Video call: LiveKit (agar URL set hai) warna simple WebRTC mesh ---------- */
 const ICE = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }, { urls: "stun:stun1.l.google.com:19302" }] };
-$("vc").onclick = async () => { if (call) return; await send({ file_type: "call", body: "" }); joinCall(); };
+$("vc").onclick = () => startCall(false);
+$("ac").onclick = () => startCall(true);
+async function startCall(audio) {
+  if (call || !cur) return;
+  await send({ file_type: "call", body: audio ? "audio" : "" });
+  joinCall(audio);
+}
 
+function layout() { const g = $("grid"); g.dataset.n = g.querySelectorAll(".tile:not(#t-me)").length; }
 function tile(id, stream, mine, label) {
+  if (mine && call && call.audio) return;
   let t = $("t-" + id);
   if (!t) {
     t = document.createElement("div"); t.className = "tile"; t.id = "t-" + id;
     const v = document.createElement("video"); v.autoplay = true; v.playsInline = true; v.muted = mine; t.appendChild(v);
     const i = document.createElement("i"); i.textContent = mine ? "Aap" : (label || names[id] || "Dost"); t.appendChild(i); $("grid").appendChild(t);
   }
-  t.firstChild.srcObject = stream;
+  t.firstChild.srcObject = stream; t.firstChild.play().catch(() => {}); layout();
 }
-function drop(id) { const p = call && call.pcs[id]; if (p) { p.close(); delete call.pcs[id]; } const t = $("t-" + id); if (t) t.remove(); }
+function checkEnd() {
+  const c = call; if (!c || c.group || !c.t0 || c.peers.size) return;
+  setTimeout(() => { if (call === c && !c.peers.size) { toast("Call khatam ho gayi"); leaveCall(); } }, 1200);
+}
+function drop(id) {
+  const p = call && call.pcs[id]; if (p) { p.close(); delete call.pcs[id]; }
+  const t = $("t-" + id); if (t) t.remove(); layout();
+  if (call) { call.peers.delete(id); checkEnd(); }
+}
+function peerIn(id) {
+  if (!call) return; call.peers.add(id); if (call.t0) return;
+  call.t0 = Date.now(); clearTimeout(call.to);
+  const tick = () => { if (!call) return; const s = Math.floor((Date.now() - call.t0) / 1000); $("cst").textContent = String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0"); };
+  call.iv = setInterval(tick, 1000); tick();
+}
+function noAnswer() { if (call && !call.group && !call.t0) { toast("Kisi ne call nahi uthayi"); leaveCall(); } }
+function callUI(audio, c) {
+  const peer = c.kind === "dm" ? pcache[(c.others || [])[0]] : null;
+  $("call").classList.toggle("audio", audio); $("call").classList.add("on");
+  $("cam").style.display = audio ? "none" : "";
+  $("cname").textContent = c.title; $("cst").textContent = "Ring ho raha hai…";
+  $("cav").replaceChildren(av(peer || { name: c.title }, 150));
+  $("grid").dataset.n = 0;
+}
 async function flush(id) { const p = call.pcs[id]; for (const c of (call.q[id] || [])) try { await p.addIceCandidate(c); } catch (e) {} call.q[id] = []; }
 function mk(id) {
   if (call.pcs[id]) call.pcs[id].close();
   const pc = new RTCPeerConnection(ICE); call.pcs[id] = pc;
   call.stream.getTracks().forEach(t => pc.addTrack(t, call.stream));
   pc.onicecandidate = e => e.candidate && call.sig({ t: "ice", to: id, c: e.candidate });
-  pc.ontrack = e => tile(id, e.streams[0], false);
-  pc.onconnectionstatechange = () => { if (pc.connectionState === "failed") drop(id); };
+  pc.ontrack = e => { peerIn(id); tile(id, e.streams[0], false); };
+  pc.onconnectionstatechange = () => { if ((pc.connectionState === "failed" || pc.connectionState === "closed") && call && call.pcs[id] === pc) drop(id); };
   return pc;
 }
-async function joinCall() {
-  if (call) return;
-  if (LIVEKIT_URL) return joinLK();
+async function joinCall(audio) {
+  if (call || !cur) return;
+  audio = audio === true; const c0 = cur;
+  const me0 = call = { audio, group: c0.kind === "group", pcs: {}, q: {}, peers: new Set(), mic: true, cam: !audio };
+  if (LIVEKIT_URL) return joinLK(c0, me0);
   let stream;
-  try { stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: true }); }
-  catch (e) { toast("Camera aur mic ki permission do (site https par honi chahiye)."); return; }
-  const ch = sb.channel("call-" + cur.id, { config: { broadcast: { self: false } } });
-  call = { stream, ch, pcs: {}, q: {} };
-  call.sig = o => ch.send({ type: "broadcast", event: "sig", payload: { from: me.id, ...o } });
-  tile("me", stream, true); $("call").classList.add("on");
+  try { stream = await navigator.mediaDevices.getUserMedia(audio ? { audio: true } : { video: { facingMode: "user" }, audio: true }); }
+  catch (e) { if (call === me0) call = null; toast("Mic" + (audio ? "" : " aur camera") + " ki permission do (site https par honi chahiye)."); return; }
+  if (call !== me0) { stream.getTracks().forEach(t => t.stop()); return; }
+  const ch = sb.channel("call-" + c0.id, { config: { broadcast: { self: false } } });
+  Object.assign(me0, { stream, ch });
+  me0.sig = o => ch.send({ type: "broadcast", event: "sig", payload: { from: me.id, ...o } });
+  callUI(audio, c0); tile("me", stream, true); me0.to = setTimeout(noAnswer, 45000);
   ch.on("broadcast", { event: "sig" }, async ({ payload: p }) => {
     if (!call || (p.to && p.to !== me.id)) return;
     try {
@@ -1112,40 +1206,49 @@ async function joinCall() {
       else if (p.t === "ice") { const pc = call.pcs[p.from]; if (pc && pc.remoteDescription) await pc.addIceCandidate(p.c); else (call.q[p.from] = call.q[p.from] || []).push(p.c); }
       else if (p.t === "bye") drop(p.from);
     } catch (e) { console.error(e); }
-  }).subscribe(s => { if (s === "SUBSCRIBED") call.sig({ t: "hello" }); });
+  }).subscribe(st => { if (st === "SUBSCRIBED" && call === me0) me0.sig({ t: "hello" }); });
 }
-async function joinLK() {
-  const L = window.LivekitClient; if (!L) return toast("LiveKit load nahi hua, internet check karo.");
-  const { data, error } = await sb.functions.invoke("livekit-token", { body: { room: cur.id, name: prof.name } });
-  if (error || !data || !data.token) return toast("Call token nahi mila: " + (error ? error.message : "") + " (SETUP.md ka LiveKit step dekho)");
-  const room = new L.Room({ adaptiveStream: true, dynacast: true });
-  call = { lk: room, pcs: {}, q: {}, mic: true, cam: true };
+async function joinLK(c0, me0) {
+  const fail = m => { if (call === me0) call = null; toast(m); };
+  const L = window.LivekitClient; if (!L) return fail("LiveKit load nahi hua, internet check karo.");
+  const { data, error } = await sb.functions.invoke("livekit-token", { body: { room: c0.id, name: prof.name } });
+  if (error || !data || !data.token) return fail("Call token nahi mila: " + (error ? error.message : "") + " (SETUP.md ka LiveKit step dekho)");
+  if (call !== me0) return;
+  const room = new L.Room({ adaptiveStream: true, dynacast: true }); me0.lk = room;
   room.on(L.RoomEvent.TrackSubscribed, (t, pub, p) => {
+    peerIn(p.identity);
     if (t.kind === "video") tile(p.identity, new MediaStream([t.mediaStreamTrack]), false, p.name); else $("aud").appendChild(t.attach());
   });
-  room.on(L.RoomEvent.TrackUnsubscribed, (t, pub, p) => { if (t.kind === "video") drop(p.identity); else t.detach().forEach(e => e.remove()); });
+  room.on(L.RoomEvent.ParticipantConnected, p => peerIn(p.identity));
+  room.on(L.RoomEvent.TrackUnsubscribed, (t, pub, p) => { if (t.kind === "video") { const e = $("t-" + p.identity); if (e) { e.remove(); layout(); } } else t.detach().forEach(e => e.remove()); });
   room.on(L.RoomEvent.ParticipantDisconnected, p => drop(p.identity));
-  room.on(L.RoomEvent.Disconnected, leaveCall);
-  $("call").classList.add("on");
+  room.on(L.RoomEvent.Disconnected, () => { if (call === me0) leaveCall(); });
+  callUI(me0.audio, c0); me0.to = setTimeout(noAnswer, 45000);
   try {
     await room.connect(LIVEKIT_URL, data.token);
-    await room.localParticipant.enableCameraAndMicrophone();
-    const cp = room.localParticipant.getTrackPublication(L.Track.Source.Camera);
-    if (cp && cp.track) tile("me", new MediaStream([cp.track.mediaStreamTrack]), true);
+    if (call !== me0) { room.disconnect(); return; }
+    room.remoteParticipants.forEach(p => peerIn(p.identity));
+    if (me0.audio) await room.localParticipant.setMicrophoneEnabled(true);
+    else {
+      await room.localParticipant.enableCameraAndMicrophone();
+      const cp = room.localParticipant.getTrackPublication(L.Track.Source.Camera);
+      if (cp && cp.track) tile("me", new MediaStream([cp.track.mediaStreamTrack]), true);
+    }
   } catch (e) { toast("Camera/mic ya connection error: " + e.message); leaveCall(); }
 }
 function leaveCall() {
   if (!call) return; const c = call; call = null;
+  clearTimeout(c.to); clearInterval(c.iv);
   if (c.lk) c.lk.disconnect();
-  else { c.sig({ t: "bye" }); Object.values(c.pcs).forEach(p => p.close()); c.stream.getTracks().forEach(t => t.stop()); sb.removeChannel(c.ch); }
-  $("grid").innerHTML = ""; $("aud").innerHTML = ""; $("call").classList.remove("on");
+  else if (c.sig) { c.sig({ t: "bye" }); Object.values(c.pcs).forEach(p => p.close()); c.stream.getTracks().forEach(t => t.stop()); setTimeout(() => sb.removeChannel(c.ch), 600); }
+  $("grid").innerHTML = ""; $("aud").innerHTML = ""; $("call").classList.remove("on", "audio"); $("grid").dataset.n = 0;
   $("mic").classList.remove("off"); $("cam").classList.remove("off");
 }
 $("end").onclick = leaveCall; window.addEventListener("pagehide", () => { leaveCall(); if (me) rpc("touch_last_seen"); });
 function toggle(kind) {
-  if (!call) return; const btn = $(kind === "mic" ? "mic" : "cam");
+  if (!call || !(call.lk || call.stream)) return; const btn = $(kind === "mic" ? "mic" : "cam");
   if (call.lk) { call[kind] = !call[kind]; const lp = call.lk.localParticipant; kind === "mic" ? lp.setMicrophoneEnabled(call.mic) : lp.setCameraEnabled(call.cam); btn.classList.toggle("off", !call[kind]); }
-  else { const t = (kind === "mic" ? call.stream.getAudioTracks() : call.stream.getVideoTracks())[0]; t.enabled = !t.enabled; btn.classList.toggle("off", !t.enabled); }
+  else { const t = (kind === "mic" ? call.stream.getAudioTracks() : call.stream.getVideoTracks())[0]; if (!t) return; t.enabled = !t.enabled; btn.classList.toggle("off", !t.enabled); }
 }
 $("mic").onclick = () => toggle("mic"); $("cam").onclick = () => toggle("cam");
 
@@ -1300,7 +1403,7 @@ $("vsheet").onclick = e => { if (e.target.id === "vsheet") { e.target.classList.
 const FEATS = [
   ["🔒", "Safe chat", "Account password se surakshit hai, aur Block / Report ki suvidha hai. (Messages end-to-end encrypted nahi hain — Privacy Policy dekho.)"],
   ["✔✔", "Blue tick", "Pata chalta hai message bheja gaya, pahunch gaya ya padh liya gaya."],
-  ["📹", "Video call", "Dost ya group ke saath live video call."],
+  ["📹", "Video aur Voice call", "Dost ya group ke saath live video ya sirf awaaz wali call."],
   ["🎤", "Voice message", "Type karne ki jagah bolkar message bhejo."],
   ["🎮", "Games", "Timepass ke liye chhote games."],
   ["⭕", "Status", "24 ghante ka status — text ya photo. Kisne dekha, wo bhi dikhta hai."],
@@ -1315,7 +1418,7 @@ const GUIDE = [
   ["💬", "Message, photo, voice bhejna", "<ul><li><b>Text:</b> niche likho aur ➤ dabao.</li><li><b>Emoji:</b> 😊 dabao.</li><li><b>Photo / video / file:</b> 📎 dabao (50 MB tak).</li><li><b>Voice:</b> 🎤 dabao, bolo, phir ➤ se bhejo. Hatana ho to 🗑 dabao.</li></ul>"],
   ["👆", "Message par kya-kya kar sakte ho", "<ul><li><b>Lamba dabao</b> (computer par double-click) → menu khulta hai.</li><li><b>↩️ Reply</b> — ya message ko <b>right taraf swipe</b> karo.</li><li><b>👍❤️😂 Reaction</b> — upar ke emoji dabao.</li><li><b>✏️ Edit</b> — sirf apna text message.</li><li><b>Delete</b> — 'mere liye' ya 'sabke liye'.</li></ul>"],
   ["✔✔", "Tick ka matlab", "<ul><li><b>✓</b> — message bhej diya gaya.</li><li><b>✓✓</b> (grey) — dost tak pahunch gaya.</li><li><b class='tkx'>✓✓</b> (neela) — dost ne padh liya.</li></ul><p>Chat ke upar <b>online</b> ya <b>last seen</b> aur <b>typing…</b> bhi dikhta hai.</p>"],
-  ["📹", "Video call", "<ol><li>Chat ke upar <b>📹</b> dabao — camera aur mic ki permission do.</li><li>Dost ko chat mein <b>Join karo</b> button dikhega (aur call ring aayegi).</li><li>Call mein 🎤 mic, 📷 camera band-chalu kar sakte ho; 📞 se call khatam.</li></ol>"],
+  ["📹", "Video call", "<ol><li>Chat ke upar <b>📹</b> (video) ya <b>📞</b> (sirf awaaz) dabao — mic/camera ki permission do.</li><li>Dost ko chat mein <b>Join karo</b> button dikhega (aur call ring aayegi).</li><li>Call mein 🎤 mic, 📷 camera band-chalu kar sakte ho; 📞 se call khatam.</li></ol>"],
   ["⭕", "Status lagana", "<ol><li>Neeche <b>Status</b> tab kholo.</li><li><b>＋</b> dabao → text likho ya <b>📷 Photo chuno</b>.</li><li><b>Status lagao</b> dabao. 24 ghante baad apne aap hat jayega.</li><li>Dost ka status dekhne ke liye uske naam par dabao; left/right tap karke aage-peeche jao.</li><li>Apne status par <b>👁</b> se dekhne walon ki list dikhti hai.</li></ol>"],
   ["🖼️", "Profile photo, naam, about", "<p><b>Settings</b> mein sabse upar apna profile card dabao → photo, naam aur about badlo → <b>Save karo</b>.</p>"],
   ["🚫", "Block aur Report", "<p>Chat mein upar <b>⋮</b> dabao → <b>Block karo</b> ya <b>Report karo</b>. Block kiya hua user aapko message nahi bhej payega. Unblock Settings mein hota hai.</p>"],
