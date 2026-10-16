@@ -929,8 +929,11 @@ $("lbx").onclick = () => $("lb").classList.remove("on"); $("lb").onclick = e => 
 let rt, rctx, bt, mrt, dvt;
 function markRead() { if (!cur || document.hidden) return; clearTimeout(mrt); mrt = setTimeout(() => { if (cur) rpc("mark_read", { cid: String(cur.id) }); }, 250); }
 function deliv() { clearTimeout(dvt); dvt = setTimeout(() => rpc("mark_delivered_all"), 300); }
+let ich = null, ichTimer;
 function listen() {
-  sb.channel("inbox")
+  if (ich) { const o = ich; ich = null; try { sb.removeChannel(o); } catch (e) {} }
+  const mine = ich = sb.channel("inbox-" + Date.now());
+  mine
   .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, async e => {
     const m = e.new; if (m.sender === me.id || blocked.has(m.sender)) return;
     deliv();
@@ -941,11 +944,59 @@ function listen() {
     await getProfiles([m.sender]); const who = (pcache[m.sender] || {}).name || "Dost";
     if (m.file_type === "call") { if (Date.now() - new Date(m.created_at) < 60000) ring(c, who); }
     else if (!here) banner((c.kind === "group" ? c.title + " · " : "") + who + ": " + preview(m), () => openChat(c));
+    if (document.hidden && m.file_type !== "call") sysNotify(c, who, m);
     if (!here) debounceList();
   })
   .on("postgres_changes", { event: "UPDATE", schema: "public", table: "messages" }, e => {
     const m = e.new; if (cur && cur.id === m.conversation_id) { if (store.has(m.id)) upd(m); } else debounceList();
-  }).subscribe();
+  }).subscribe(st => {
+    if (ich !== mine) return;
+    if (st === "SUBSCRIBED") { resync(); return; }
+    if (st === "CHANNEL_ERROR" || st === "TIMED_OUT" || st === "CLOSED") { clearTimeout(ichTimer); ichTimer = setTimeout(() => { if (me && ich === mine) listen(); }, 2000); }
+  });
+}
+
+/* ---------- Resync: app background se wapas aaye / net wapas aaye / connection toota ---------- */
+let syncing = false;
+async function syncCur() {
+  const c = cur; if (!c) return;
+  const { data } = await sb.from("messages").select("*").eq("conversation_id", c.id).order("created_at", { ascending: false }).limit(50);
+  if (!data || cur !== c) return;
+  data.reverse().forEach(m => {
+    const o = store.get(m.id);
+    if (!o) add(m); else if (JSON.stringify(o) !== JSON.stringify(m)) upd(m);
+  });
+  markRead();
+}
+async function resync() {
+  if (!me || syncing || document.hidden) return; syncing = true;
+  try {
+    if (!ich || ich.state !== "joined") listen();
+    rpc("mark_delivered_all");
+    await syncCur();
+    loadList();
+  } catch (e) {} finally { syncing = false; }
+}
+document.addEventListener("visibilitychange", () => { if (!document.hidden) resync(); });
+window.addEventListener("online", resync);
+window.addEventListener("pageshow", resync);
+window.addEventListener("focus", resync);
+setInterval(() => {
+  if (!me || document.hidden) return;
+  if (!ich || ich.state !== "joined") { listen(); return; }
+  syncCur().catch(() => {});
+}, 15000);
+
+/* App khula hai par background mein hai — system notification dikhao */
+async function sysNotify(c, who, m) {
+  try {
+    if (!("Notification" in window) || Notification.permission !== "granted" || !("serviceWorker" in navigator)) return;
+    const reg = await navigator.serviceWorker.ready;
+    await reg.showNotification((c.kind === "group" ? c.title + " · " : "") + who, {
+      body: preview(m), tag: "chat-" + c.id, renotify: true,
+      icon: "icon-192.png", data: { chat: c.id }
+    });
+  } catch (e) {}
 }
 function banner(t, fn) {
   const b = $("bn"); b.textContent = "💬 " + t; b.classList.add("on");
